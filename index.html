@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KTL Test — Система тестирования для подготовки в КТЛ</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-graduation-cap"></i>
+                <span class="logo-text"><span class="logo-ktl">KTL</span> Test</span>
+            </div>
+        </div>
+        <ul class="sidebar-menu">
+            <li class="active" data-page="home">
+                <a href="#"><i class="fas fa-home"></i> <span>Бас бет</span></a>
+            </li>
+            <li data-page="tests" class="has-submenu">
+                <a href="#"><i class="fas fa-list-check"></i> <span>Система тестирования</span> <i class="fas fa-chevron-right submenu-arrow"></i></a>
+                <ul class="submenu">
+                    <li data-page="tests"><a href="#">Қолжетімді тесттер</a></li>
+                    <li data-page="results"><a href="#">Менің нәтижелерім</a></li>
+                </ul>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <div class="lang-switch">
+                <button class="lang-btn active" data-lang="kz">Қазақ</button>
+                <button class="lang-btn" data-lang="ru">Русский</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Top bar -->
+    <header class="topbar">
+        <button class="menu-toggle" id="menuToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="topbar-right">
+            <span class="lang-label" data-lang="kz">Қазақ</span>
+            <span class="lang-label active" data-lang="ru">Русский</span>
+            <div class="user-avatar" id="userAvatar">
+                <i class="fas fa-user-circle"></i>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main content -->
+    <main class="main-content">
+        <!-- ============ HOME PAGE ============ -->
+        <div class="page active" id="page-home">
+            <div class="stats-row">
+                <div class="stat-card">
+                    <i class="fas fa-users"></i>
+                    <div class="stat-number" data-count="5240">0</div>
+                    <div class="stat-label">Всего пользователей</div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-list-ol"></i>
+                    <div class="stat-number" data-count="28450">0</div>
+                    <div class="stat-label">Всего сданных тестов</div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-check-circle"></i>
+                    <div class="stat-number" data-count="412870">0</div>
+                    <div class="stat-label">Всего решенных задач</div>
+                </div>
+            </div>
+
+            <div class="content-grid">
+                <div class="info-block">
+                    <h2>Система тестирования <span class="highlight">ktltest.kz</span></h2>
+                    <p>Система тестирования ktltest.kz – это некоммерческий проект, который был создан для поддержки наших личных потребностей, как учителей, с целью отбора претендентов в олимпиадную сборную команду НИШ по математике и для помощи нашим учащимся 6-12 классов в усвоении пройденного материала на уроках математики.</p>
+                    <p>Принцип работы ktltest.kz – это формирование тестов на основе заранее заданных правил из базы заданий системы. Сейчас в системе содержится более 7000 тестовых заданий на различные темы, большинство из которых задания для 5-7 классов, а благодаря помощи наших <span class="badge-green">коллег</span> система содержит задачи на Казахском и Русском языках. Учитывая такое количество заданий система каждый раз формирует для прохождения различные тесты.</p>
+                    <p>Опираясь на учебную программу по математике для 5-6 классов и образцы заданий конкурсного отбора в 7 класс (www.nis.edu.kz), мы попытались создать правила формирования тестов, которые по уровню и тематике очень близки к заданиям вступительных тестов по математике в Назарбаев Интеллектуальные Школы. В течение нескольких лет использования такого подхода при подготовке к успешному прохождению конкурсного отбора мы получаем положительные отзывы со стороны наших учащихся.</p>
+                    <p>Мы решили открыть доступ к системе для всех желающих. Мы надеемся, что это может служить дополнительным полезным источником, который поможет ребятам в подготовке к поступлению в НИШ. Для использования системы пройдите регистрацию.</p>
+                    <p class="team-greeting">С уважением, учителя Назарбаев Интеллектуальных школ</p>
+                    <div class="team-section">
+                        <div class="team-member">
+                            <div class="member-avatar"><i class="fas fa-user-tie"></i></div>
+                            <div class="member-info">
+                                <strong>Полянских Сергей Сергеевич</strong>
+                                <span>Учитель математики</span>
+                            </div>
+                        </div>
+                        <div class="team-member">
+                            <div class="member-avatar"><i class="fas fa-chalkboard-teacher"></i></div>
+                            <div class="member-info">
+                                <strong>Сосин Виктор Николаевич</strong>
+                                <span>Учитель математики</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Login form -->
+                <div class="login-block" id="loginBlock">
+                    <div class="login-form">
+                        <div class="input-group">
+                            <i class="fas fa-envelope"></i>
+                            <input type="email" id="loginEmail" placeholder="Email">
+                        </div>
+                        <div class="input-group">
+                            <i class="fas fa-pen"></i>
+                            <input type="password" id="loginPassword" placeholder="Пароль">
+                        </div>
+                        <button class="btn btn-primary" id="loginBtn">Войти</button>
+                        <button class="btn btn-outline" id="forgotBtn">Забыли пароль?</button>
+                        <button class="btn btn-dark" id="registerBtn">Зарегистрироваться</button>
+                    </div>
+                </div>
+
+                <!-- User panel (shown after login) -->
+                <div class="user-panel" id="userPanel" style="display:none;">
+                    <div class="user-welcome">
+                        <div class="user-icon"><i class="fas fa-user-graduate"></i></div>
+                        <h3 id="welcomeName">Добро пожаловать!</h3>
+                        <p class="user-email" id="welcomeEmail"></p>
+                    </div>
+                    <div class="user-stats">
+                        <div class="user-stat">
+                            <span class="user-stat-num" id="userTests">0</span>
+                            <span class="user-stat-label">Тестов сдано</span>
+                        </div>
+                        <div class="user-stat">
+                            <span class="user-stat-num" id="userAvg">0%</span>
+                            <span class="user-stat-label">Средний балл</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="startTestBtn">Начать тест</button>
+                    <button class="btn btn-outline" id="logoutBtn">Выйти</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ TESTS LIST PAGE ============ -->
+        <div class="page" id="page-tests">
+            <h2 class="page-title">Қолжетімді тесттер беті</h2>
+
+            <div class="test-filters">
+                <div class="filter-row">
+                    <label>Тестілеу тақырыбын таңдаңыз:</label>
+                    <select id="filterSubject">
+                        <option value="all">Все предметы</option>
+                        <option value="math5">Математика 5 класс</option>
+                        <option value="math6">Математика 6 класс</option>
+                        <option value="math7">Математика 7 класс</option>
+                        <option value="logic">Логика</option>
+                        <option value="ktl">Вступительный КТЛ</option>
+                        <option value="olymp">Олимпиадные задачи</option>
+                    </select>
+                </div>
+                <div class="filter-row">
+                    <label>Тестілеу тілін таңдаңыз:</label>
+                    <select id="filterLang">
+                        <option value="kz">Казахский</option>
+                        <option value="ru">Русский</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="tests-table-wrap">
+                <table class="tests-table">
+                    <thead>
+                        <tr>
+                            <th>Тесттің аты</th>
+                            <th>Тесттік талдау</th>
+                            <th>Тестілеу бойынша нәтижелеріңіз</th>
+                            <th>Тестті өту</th>
+                        </tr>
+                    </thead>
+                    <tbody id="testsListBody">
+                        <!-- filled by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ============ TEST ACTIVE PAGE ============ -->
+        <div class="page" id="page-test-active">
+            <div class="test-active-header">
+                <h2 id="testTitle">Тест</h2>
+                <div class="test-timer-box">
+                    <span class="timer-dot">*</span> Қалған уақыт: <span id="timerDisplay">10 мин.</span>
+                </div>
+            </div>
+
+            <div class="test-page-nav" id="testPageNav">
+                <!-- page numbers 1 2 3 4 ... -->
+            </div>
+
+            <div id="questionsContainer">
+                <!-- all questions rendered here -->
+            </div>
+
+            <div class="test-submit-row">
+                <button class="btn btn-primary" id="finishTest">Тестті аяқтау</button>
+            </div>
+        </div>
+
+        <!-- ============ TEST ANALYSIS PAGE ============ -->
+        <div class="page" id="page-analysis">
+            <h2 class="page-title" id="analysisTitle">Анализ теста</h2>
+            <button class="btn btn-purple" id="showDetailAnalysis">Показать анализ теста по задачам</button>
+            <div class="analysis-table-wrap">
+                <table class="analysis-table">
+                    <thead>
+                        <tr>
+                            <th>Тема</th>
+                            <th id="analysisUserCol">Результат</th>
+                        </tr>
+                    </thead>
+                    <tbody id="analysisBody">
+                        <!-- filled by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ============ RESULTS PAGE ============ -->
+        <div class="page" id="page-results">
+            <h2 class="page-title">Менің нәтижелерім</h2>
+            <div class="results-table-wrap">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>№</th>
+                            <th>Тест</th>
+                            <th>Дата</th>
+                            <th>Результат</th>
+                            <th>Время</th>
+                            <th>Балл</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                        <tr>
+                            <td colspan="6" class="empty-results">Пройдите тест, чтобы увидеть результаты</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ============ TEST RESULT MODAL ============ -->
+        <div class="modal-overlay" id="resultModal">
+            <div class="modal result-modal">
+                <h2>Тест нәтижесі</h2>
+                <div class="result-circle" id="resultCircle">
+                    <span class="result-percent" id="resultPercent">0%</span>
+                </div>
+                <div class="result-details">
+                    <p>Дұрыс жауаптар: <strong id="resultCorrect">0</strong> / <strong id="resultTotal">20</strong></p>
+                    <p>Уақыт: <strong id="resultTime">00:00</strong></p>
+                    <p>Балл: <strong id="resultScore">0</strong></p>
+                </div>
+                <button class="btn btn-primary" id="closeResult">Жабу</button>
+                <button class="btn btn-outline" id="showAnalysis">Анализ</button>
+            </div>
+        </div>
+
+        <!-- ============ REGISTRATION MODAL ============ -->
+        <div class="modal-overlay" id="registerModal">
+            <div class="modal">
+                <button class="modal-close" id="closeModal"><i class="fas fa-times"></i></button>
+                <h2>Тіркелу</h2>
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="regName" placeholder="Аты-жөні">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="regEmail" placeholder="Email">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="regPassword" placeholder="Құпия сөз">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-school"></i>
+                    <select id="regClass">
+                        <option value="">Сыныпты таңдаңыз</option>
+                        <option value="5">5 сынып</option>
+                        <option value="6">6 сынып</option>
+                        <option value="7">7 сынып</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="regSubmit">Тіркелу</button>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="site-footer" id="siteFooter">
+            <p>Талдықорган қ, Назарбаев Зияткерлік Мектебі <a href="mailto:ktltest@gmail.com">ktltest@gmail.com</a></p>
+            <div class="social-icons">
+                <a href="#"><i class="fab fa-vk"></i></a>
+                <a href="#"><i class="fab fa-x-twitter"></i></a>
+                <a href="#"><i class="fab fa-whatsapp"></i></a>
+                <a href="#"><i class="fab fa-telegram"></i></a>
+            </div>
+        </footer>
+    </main>
+
+    <div class="scroll-top" id="scrollTop"><i class="fas fa-chevron-up"></i></div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
