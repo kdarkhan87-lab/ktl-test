@@ -401,12 +401,6 @@ function updateUIForUser() {
             $('#userAvg').textContent = '0%';
         }
 
-        // Show admin panel button for admins
-        const adminBtn = $('#adminPanelBtn');
-        if (adminBtn) {
-            adminBtn.style.display = (currentUserData.role === 'admin' || currentUserData.role === 'super-admin') ? 'block' : 'none';
-        }
-
         updateResultsTable();
         renderTestsList();
     } else {
