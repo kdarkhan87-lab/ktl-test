@@ -1,3 +1,17 @@
+// ==================== FIREBASE CONFIG ====================
+const firebaseConfig = {
+    apiKey: "AIzaSyDrDeyqvosOfAZd51Me810p-s24jYPRE9M",
+    authDomain: "ktl-test-3ead6.firebaseapp.com",
+    projectId: "ktl-test-3ead6",
+    storageBucket: "ktl-test-3ead6.firebasestorage.app",
+    messagingSenderId: "314496430745",
+    appId: "1:314496430745:web:452613d8612aab2839fe08"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
 // ==================== TEST DATA ====================
 const testsList = [
     { id: 'intro', name: 'Кіріспе сынақ тесті (оңай, 40 есеп 60 минут)', category: 'math5', questions: 40, time: 60, topics: ['Арифметика', 'Натуральные числа', 'Дроби', 'Проценты'] },
@@ -18,7 +32,6 @@ const testsList = [
     { id: 'math7_1', name: 'Алгебра 7 класс (10 есеп 25 минут)', category: 'math7', questions: 10, time: 25, topics: ['Степени', 'Многочлены', 'Формулы сокращённого умножения'] },
 ];
 
-// Question bank (5 answers each, A-E)
 const questionBank = {
     math5: [
         { q: "Вычислите: 125 × 8 + 375 × 8", a: ["3000","4000","5000","4500","3500"], correct: 1 },
@@ -149,6 +162,7 @@ const questionBank = {
 
 // ==================== STATE ====================
 let currentUser = null;
+let currentUserData = null;
 let currentTest = null;
 let currentQuestions = [];
 let userAnswers = [];
@@ -156,7 +170,7 @@ let timerInterval = null;
 let timeLeft = 0;
 let testStartTime = 0;
 let testResults = [];
-let testAttempts = {}; // { testId: [{score, date}, ...] }
+let testAttempts = {};
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -168,8 +182,20 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAuth();
     setupTests();
     setupScrollTop();
-    loadState();
-    renderTestsList();
+
+    auth.onAuthStateChanged(async user => {
+        if (user) {
+            currentUser = user;
+            await loadUserData();
+            updateUIForUser();
+        } else {
+            currentUser = null;
+            currentUserData = null;
+            testResults = [];
+            testAttempts = {};
+            updateUIForUser();
+        }
+    });
 });
 
 // ==================== COUNTERS ====================
@@ -188,7 +214,6 @@ function animateCounters() {
 
 // ==================== NAVIGATION ====================
 function setupNavigation() {
-    // Sidebar items
     $$('.sidebar-menu > li').forEach(li => {
         li.addEventListener('click', e => {
             e.preventDefault();
@@ -213,7 +238,6 @@ function setupNavigation() {
         });
     });
 
-    // Submenu items
     $$('.submenu li').forEach(li => {
         li.addEventListener('click', e => {
             e.preventDefault();
@@ -241,7 +265,7 @@ function setActiveMenu(li) {
     li.classList.add('active');
 }
 
-// ==================== AUTH ====================
+// ==================== AUTH (Firebase) ====================
 function setupAuth() {
     $('#loginBtn').addEventListener('click', login);
     $('#loginPassword').addEventListener('keypress', e => { if (e.key === 'Enter') login(); });
@@ -253,64 +277,128 @@ function setupAuth() {
         showPage('tests');
         $$('.sidebar-menu > li')[1].classList.add('open');
     });
-    $('#forgotBtn').addEventListener('click', () => alert('Құпия сөзді қалпына келтіру әзірленуде'));
+    $('#forgotBtn').addEventListener('click', forgotPassword);
 }
 
-function login() {
+async function login() {
     const email = $('#loginEmail').value.trim();
     const password = $('#loginPassword').value.trim();
     if (!email || !password) { alert('Барлық өрістерді толтырыңыз'); return; }
 
-    const users = JSON.parse(localStorage.getItem('ktl_users') || '[]');
-    const user = users.find(u => u.email === email && u.password === password);
-
-    currentUser = user || { name: email.split('@')[0], email };
-    localStorage.setItem('ktl_current_user', JSON.stringify(currentUser));
-    updateUIForUser();
+    try {
+        $('#loginBtn').disabled = true;
+        $('#loginBtn').textContent = 'Кіру...';
+        await auth.signInWithEmailAndPassword(email, password);
+    } catch (error) {
+        let msg = 'Кіру қатесі';
+        if (error.code === 'auth/user-not-found') msg = 'Пайдаланушы табылмады';
+        else if (error.code === 'auth/wrong-password') msg = 'Құпия сөз дұрыс емес';
+        else if (error.code === 'auth/invalid-email') msg = 'Email дұрыс емес';
+        else if (error.code === 'auth/invalid-credential') msg = 'Email немесе құпия сөз дұрыс емес';
+        alert(msg);
+    } finally {
+        $('#loginBtn').disabled = false;
+        $('#loginBtn').textContent = 'Войти';
+    }
 }
 
-function register() {
+async function register() {
     const name = $('#regName').value.trim();
     const email = $('#regEmail').value.trim();
     const password = $('#regPassword').value.trim();
     const cls = $('#regClass').value;
     if (!name || !email || !password || !cls) { alert('Барлық өрістерді толтырыңыз'); return; }
+    if (password.length < 6) { alert('Құпия сөз кемінде 6 таңба болуы керек'); return; }
 
-    const users = JSON.parse(localStorage.getItem('ktl_users') || '[]');
-    if (users.find(u => u.email === email)) { alert('Бұл email тіркелген'); return; }
+    try {
+        $('#regSubmit').disabled = true;
+        $('#regSubmit').textContent = 'Тіркелу...';
+        const cred = await auth.createUserWithEmailAndPassword(email, password);
 
-    const newUser = { name, email, password, class: cls };
-    users.push(newUser);
-    localStorage.setItem('ktl_users', JSON.stringify(users));
-    currentUser = newUser;
-    localStorage.setItem('ktl_current_user', JSON.stringify(currentUser));
-    $('#registerModal').classList.remove('active');
-    updateUIForUser();
-    alert('Тіркелу сәтті! Қош келдіңіз!');
+        await db.collection('users').doc(cred.user.uid).set({
+            name,
+            email,
+            class: cls,
+            role: 'student',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        await cred.user.updateProfile({ displayName: name });
+
+        $('#registerModal').classList.remove('active');
+        alert('Тіркелу сәтті! Қош келдіңіз!');
+    } catch (error) {
+        let msg = 'Тіркелу қатесі';
+        if (error.code === 'auth/email-already-in-use') msg = 'Бұл email тіркелген';
+        else if (error.code === 'auth/weak-password') msg = 'Құпия сөз тым қарапайым';
+        else if (error.code === 'auth/invalid-email') msg = 'Email дұрыс емес';
+        alert(msg);
+    } finally {
+        $('#regSubmit').disabled = false;
+        $('#regSubmit').textContent = 'Тіркелу';
+    }
 }
 
-function logout() {
-    currentUser = null;
-    localStorage.removeItem('ktl_current_user');
-    updateUIForUser();
+async function logout() {
+    await auth.signOut();
     showPage('home');
     setActiveMenu($$('.sidebar-menu > li')[0]);
 }
 
+async function forgotPassword() {
+    const email = $('#loginEmail').value.trim();
+    if (!email) { alert('Email өрісін толтырыңыз'); return; }
+    try {
+        await auth.sendPasswordResetEmail(email);
+        alert('Құпия сөзді қалпына келтіру сілтемесі жіберілді: ' + email);
+    } catch (error) {
+        alert('Қате: ' + (error.code === 'auth/user-not-found' ? 'Пайдаланушы табылмады' : error.message));
+    }
+}
+
+// ==================== USER DATA (Firestore) ====================
+async function loadUserData() {
+    if (!currentUser) return;
+
+    const userDoc = await db.collection('users').doc(currentUser.uid).get();
+    if (userDoc.exists) {
+        currentUserData = userDoc.data();
+    } else {
+        currentUserData = {
+            name: currentUser.displayName || currentUser.email.split('@')[0],
+            email: currentUser.email,
+            role: 'student'
+        };
+        await db.collection('users').doc(currentUser.uid).set({
+            ...currentUserData,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }
+
+    const resultsSnap = await db.collection('users').doc(currentUser.uid)
+        .collection('results').orderBy('createdAt', 'desc').get();
+    testResults = resultsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    testAttempts = {};
+    testResults.forEach(r => {
+        if (!testAttempts[r.testId]) testAttempts[r.testId] = [];
+        testAttempts[r.testId].push({ score: r.score, date: r.date });
+    });
+}
+
 function updateUIForUser() {
-    if (currentUser) {
+    if (currentUser && currentUserData) {
         $('#loginBlock').style.display = 'none';
         $('#userPanel').style.display = 'block';
-        $('#welcomeName').textContent = `Сәлем, ${currentUser.name}!`;
+        $('#welcomeName').textContent = `Сәлем, ${currentUserData.name}!`;
         $('#welcomeEmail').textContent = currentUser.email;
-
-        testResults = JSON.parse(localStorage.getItem('ktl_results_' + currentUser.email) || '[]');
-        testAttempts = JSON.parse(localStorage.getItem('ktl_attempts_' + currentUser.email) || '{}');
 
         $('#userTests').textContent = testResults.length;
         if (testResults.length > 0) {
             const avg = testResults.reduce((s, r) => s + r.percent, 0) / testResults.length;
             $('#userAvg').textContent = Math.round(avg) + '%';
+        } else {
+            $('#userAvg').textContent = '0%';
         }
         updateResultsTable();
         renderTestsList();
@@ -319,12 +407,8 @@ function updateUIForUser() {
         $('#userPanel').style.display = 'none';
         $('#loginEmail').value = '';
         $('#loginPassword').value = '';
+        renderTestsList();
     }
-}
-
-function loadState() {
-    const saved = localStorage.getItem('ktl_current_user');
-    if (saved) { currentUser = JSON.parse(saved); updateUIForUser(); }
 }
 
 // ==================== TESTS LIST ====================
@@ -417,7 +501,6 @@ function renderAllQuestions() {
 
 window.selectAnswer = function(qi, ai) {
     userAnswers[qi] = ai;
-    // Update UI for this question
     const qEl = $(`#question-${qi}`);
     qEl.querySelectorAll('.answer-row').forEach((row, idx) => {
         row.classList.toggle('selected', idx === ai);
@@ -462,7 +545,7 @@ function updateTimerDisplay() {
 }
 
 // ==================== FINISH TEST ====================
-function finishTest() {
+async function finishTest() {
     clearInterval(timerInterval);
 
     const unanswered = userAnswers.filter(a => a === -1).length;
@@ -484,9 +567,8 @@ function finishTest() {
     const min = Math.floor(elapsed / 60);
     const sec = elapsed % 60;
     const timeStr = `${min}:${sec.toString().padStart(2, '0')}`;
-    const score = correct; // 1 point per correct
+    const score = correct;
 
-    // Show modal
     $('#resultPercent').textContent = percent + '%';
     $('#resultCorrect').textContent = correct;
     $('#resultTotal').textContent = total;
@@ -500,23 +582,30 @@ function finishTest() {
 
     $('#resultModal').classList.add('active');
 
-    // Save result
     const result = {
         test: currentTest.name,
         testId: currentTest.id,
         date: new Date().toLocaleDateString('ru-RU'),
         correct, total, percent,
         time: timeStr,
-        score
+        score,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
+
+    if (currentUser) {
+        try {
+            await db.collection('users').doc(currentUser.uid)
+                .collection('results').add(result);
+        } catch (e) {
+            console.error('Error saving result:', e);
+        }
+    }
 
     testResults.push(result);
     if (!testAttempts[currentTest.id]) testAttempts[currentTest.id] = [];
     testAttempts[currentTest.id].push({ score, date: result.date });
 
     if (currentUser) {
-        localStorage.setItem('ktl_results_' + currentUser.email, JSON.stringify(testResults));
-        localStorage.setItem('ktl_attempts_' + currentUser.email, JSON.stringify(testAttempts));
         $('#userTests').textContent = testResults.length;
         const avg = testResults.reduce((s, r) => s + r.percent, 0) / testResults.length;
         $('#userAvg').textContent = Math.round(avg) + '%';
@@ -551,7 +640,7 @@ window.showTestAnalysis = function(testId) {
 
     showPage('analysis');
     $('#analysisTitle').textContent = `Анализ теста: ${testInfo.name}`;
-    $('#analysisUserCol').textContent = currentUser ? currentUser.name : 'Результат';
+    $('#analysisUserCol').textContent = currentUserData ? currentUserData.name : 'Результат';
 
     const attempts = testAttempts[testId] || [];
     const tbody = $('#analysisBody');

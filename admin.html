@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KTL Test — Админ-панель</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #1a1a2e; color: #e0e0e0; min-height: 100vh; }
+
+        .admin-header {
+            background: #16213e;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #2ecc71;
+        }
+        .admin-header h1 { font-size: 1.3rem; color: #2ecc71; }
+        .admin-header .user-info { display: flex; align-items: center; gap: 15px; }
+        .admin-header .user-info span { color: #aaa; }
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-family: inherit; }
+        .btn-green { background: #2ecc71; color: #fff; }
+        .btn-green:hover { background: #27ae60; }
+        .btn-red { background: #e74c3c; color: #fff; }
+        .btn-red:hover { background: #c0392b; }
+        .btn-blue { background: #3498db; color: #fff; }
+        .btn-blue:hover { background: #2980b9; }
+        .btn-outline { background: transparent; border: 1px solid #555; color: #ccc; }
+        .btn-outline:hover { border-color: #2ecc71; color: #2ecc71; }
+
+        .admin-nav {
+            background: #16213e;
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid #333;
+        }
+        .admin-nav button {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 0.95rem;
+            border-bottom: 3px solid transparent;
+            font-family: inherit;
+        }
+        .admin-nav button.active { color: #2ecc71; border-bottom-color: #2ecc71; }
+        .admin-nav button:hover { color: #fff; }
+
+        .admin-content { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        .card {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .card h3 { color: #2ecc71; margin-bottom: 15px; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #333; }
+        th { background: #0f3460; color: #2ecc71; }
+        tr:hover { background: rgba(46, 204, 113, 0.05); }
+
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; margin-bottom: 4px; color: #aaa; font-size: 0.85rem; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            background: #1a1a2e;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+        .form-group textarea { min-height: 80px; resize: vertical; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #2ecc71;
+        }
+
+        .form-row { display: flex; gap: 12px; }
+        .form-row .form-group { flex: 1; }
+
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; }
+        .badge-admin { background: #e74c3c; color: #fff; }
+        .badge-student { background: #3498db; color: #fff; }
+        .badge-super { background: #9b59b6; color: #fff; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-box { background: #16213e; border-radius: 10px; padding: 20px; text-align: center; }
+        .stat-box .number { font-size: 2rem; font-weight: 700; color: #2ecc71; }
+        .stat-box .label { color: #aaa; font-size: 0.85rem; margin-top: 5px; }
+
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .login-box {
+            background: #16213e;
+            padding: 40px;
+            border-radius: 12px;
+            width: 400px;
+            text-align: center;
+        }
+        .login-box h2 { color: #2ecc71; margin-bottom: 20px; }
+        .login-box .form-group { text-align: left; }
+
+        .answer-inputs { display: flex; flex-direction: column; gap: 6px; }
+        .answer-input-row { display: flex; align-items: center; gap: 8px; }
+        .answer-input-row input[type="text"] { flex: 1; }
+        .answer-input-row input[type="radio"] { accent-color: #2ecc71; }
+        .answer-input-row label { color: #2ecc71; font-weight: 600; min-width: 20px; }
+
+        #adminApp { display: none; }
+
+        .search-bar { margin-bottom: 15px; }
+        .search-bar input {
+            width: 100%;
+            padding: 10px 15px;
+            background: #1a1a2e;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 0.95rem;
+        }
+
+        .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="adminLogin" class="login-container">
+    <div class="login-box">
+        <h2><i class="fas fa-shield-alt"></i> Админ-панель</h2>
+        <p style="color:#aaa; margin-bottom:20px;">KTL Test басқару жүйесі</p>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="adminEmail" placeholder="admin@ktltest.kz">
+        </div>
+        <div class="form-group">
+            <label>Құпия сөз</label>
+            <input type="password" id="adminPassword" placeholder="Құпия сөз">
+        </div>
+        <button class="btn btn-green" id="adminLoginBtn" style="width:100%; margin-top:10px;">Кіру</button>
+        <p id="loginError" style="color:#e74c3c; margin-top:10px; display:none;"></p>
+        <a href="index.html" style="color:#aaa; display:block; margin-top:15px; text-decoration:none;">← Негізгі бетке оралу</a>
+    </div>
+</div>
+
+<!-- Admin App -->
+<div id="adminApp">
+    <header class="admin-header">
+        <h1><i class="fas fa-graduation-cap"></i> KTL Test — Админ-панель</h1>
+        <div class="user-info">
+            <span id="adminName"></span>
+            <button class="btn btn-outline" id="adminLogoutBtn"><i class="fas fa-sign-out-alt"></i> Шығу</button>
+        </div>
+    </header>
+
+    <nav class="admin-nav">
+        <button class="active" data-tab="dashboard"><i class="fas fa-chart-bar"></i> Статистика</button>
+        <button data-tab="users"><i class="fas fa-users"></i> Пайдаланушылар</button>
+        <button data-tab="questions"><i class="fas fa-question-circle"></i> Сұрақтар</button>
+        <button data-tab="settings"><i class="fas fa-cog"></i> Баптаулар</button>
+    </nav>
+
+    <div class="admin-content">
+        <!-- Dashboard -->
+        <div class="tab-panel active" id="tab-dashboard">
+            <h2 style="margin-bottom:15px;">Статистика</h2>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="number" id="statUsers">0</div>
+                    <div class="label">Пайдаланушылар</div>
+                </div>
+                <div class="stat-box">
+                    <div class="number" id="statTests">0</div>
+                    <div class="label">Тесттер тапсырылды</div>
+                </div>
+                <div class="stat-box">
+                    <div class="number" id="statAvg">0%</div>
+                    <div class="label">Орташа балл</div>
+                </div>
+                <div class="stat-box">
+                    <div class="number" id="statQuestions">0</div>
+                    <div class="label">Сұрақтар саны</div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Соңғы нәтижелер</h3>
+                <table>
+                    <thead><tr><th>Пайдаланушы</th><th>Тест</th><th>Нәтиже</th><th>Күні</th></tr></thead>
+                    <tbody id="recentResults"><tr><td colspan="4">Жүктелуде...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Users -->
+        <div class="tab-panel" id="tab-users">
+            <div class="action-bar">
+                <h2>Пайдаланушылар</h2>
+                <button class="btn btn-green" id="addUserBtn"><i class="fas fa-plus"></i> Қосу</button>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="userSearch" placeholder="Іздеу...">
+            </div>
+            <div class="card">
+                <table>
+                    <thead><tr><th>Аты</th><th>Email</th><th>Сынып</th><th>Рөлі</th><th>Тіркелген</th><th>Әрекеттер</th></tr></thead>
+                    <tbody id="usersTable"><tr><td colspan="6">Жүктелуде...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Questions -->
+        <div class="tab-panel" id="tab-questions">
+            <div class="action-bar">
+                <h2>Сұрақтар базасы</h2>
+                <button class="btn btn-green" id="addQuestionBtn"><i class="fas fa-plus"></i> Сұрақ қосу</button>
+            </div>
+            <div class="form-row" style="margin-bottom:15px;">
+                <div class="form-group">
+                    <select id="qFilterCategory">
+                        <option value="all">Барлық категориялар</option>
+                        <option value="math5">Математика 5 класс</option>
+                        <option value="math6">Математика 6 класс</option>
+                        <option value="math7">Математика 7 класс</option>
+                        <option value="logic">Логика</option>
+                        <option value="ktl">КТЛ вступительный</option>
+                        <option value="olymp">Олимпиадные</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card">
+                <table>
+                    <thead><tr><th>#</th><th>Сұрақ</th><th>Категория</th><th>Дұрыс жауап</th><th>Әрекеттер</th></tr></thead>
+                    <tbody id="questionsTable"><tr><td colspan="5">Жүктелуде...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="tab-panel" id="tab-settings">
+            <h2 style="margin-bottom:15px;">Баптаулар</h2>
+            <div class="card">
+                <h3>Сайт мәтіндері</h3>
+                <div class="form-group">
+                    <label>Сайт тақырыбы</label>
+                    <input type="text" id="settingSiteTitle" value="KTL Test — Система тестирования для подготовки в КТЛ">
+                </div>
+                <div class="form-group">
+                    <label>Бас бет мәтіні</label>
+                    <textarea id="settingHomeText">Система тестирования ktltest.kz – это некоммерческий проект...</textarea>
+                </div>
+                <button class="btn btn-green" id="saveSettingsBtn"><i class="fas fa-save"></i> Сақтау</button>
+            </div>
+            <div class="card">
+                <h3>Админ рөлін беру</h3>
+                <div class="form-group">
+                    <label>Пайдаланушы email</label>
+                    <input type="email" id="grantAdminEmail" placeholder="user@example.com">
+                </div>
+                <button class="btn btn-blue" id="grantAdminBtn"><i class="fas fa-user-shield"></i> Админ рөлін беру</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Question Modal -->
+<div id="questionModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:1000; justify-content:center; align-items:center;">
+    <div style="background:#16213e; padding:30px; border-radius:12px; width:600px; max-height:90vh; overflow-y:auto;">
+        <h3 id="qModalTitle" style="color:#2ecc71; margin-bottom:15px;">Сұрақ қосу</h3>
+        <div class="form-group">
+            <label>Категория</label>
+            <select id="qCategory">
+                <option value="math5">Математика 5 класс</option>
+                <option value="math6">Математика 6 класс</option>
+                <option value="math7">Математика 7 класс</option>
+                <option value="logic">Логика</option>
+                <option value="ktl">КТЛ вступительный</option>
+                <option value="olymp">Олимпиадные</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Сұрақ мәтіні</label>
+            <textarea id="qText" placeholder="Сұрақ мәтінін жазыңыз..."></textarea>
+        </div>
+        <div class="form-group">
+            <label>Жауаптар (дұрыс жауапты таңдаңыз)</label>
+            <div class="answer-inputs">
+                <div class="answer-input-row"><input type="radio" name="correctAns" value="0" checked><label>A.</label><input type="text" id="qAns0" placeholder="Жауап A"></div>
+                <div class="answer-input-row"><input type="radio" name="correctAns" value="1"><label>B.</label><input type="text" id="qAns1" placeholder="Жауап B"></div>
+                <div class="answer-input-row"><input type="radio" name="correctAns" value="2"><label>C.</label><input type="text" id="qAns2" placeholder="Жауап C"></div>
+                <div class="answer-input-row"><input type="radio" name="correctAns" value="3"><label>D.</label><input type="text" id="qAns3" placeholder="Жауап D"></div>
+                <div class="answer-input-row"><input type="radio" name="correctAns" value="4"><label>E.</label><input type="text" id="qAns4" placeholder="Жауап E"></div>
+            </div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button class="btn btn-green" id="saveQuestionBtn"><i class="fas fa-save"></i> Сақтау</button>
+            <button class="btn btn-outline" id="cancelQuestionBtn">Болдырмау</button>
+        </div>
+    </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyDrDeyqvosOfAZd51Me810p-s24jYPRE9M",
+    authDomain: "ktl-test-3ead6.firebaseapp.com",
+    projectId: "ktl-test-3ead6",
+    storageBucket: "ktl-test-3ead6.firebasestorage.app",
+    messagingSenderId: "314496430745",
+    appId: "1:314496430745:web:452613d8612aab2839fe08"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+let currentAdmin = null;
+let editingQuestionId = null;
+
+// Auth
+document.getElementById('adminLoginBtn').addEventListener('click', async () => {
+    const email = document.getElementById('adminEmail').value.trim();
+    const password = document.getElementById('adminPassword').value.trim();
+    const errEl = document.getElementById('loginError');
+    errEl.style.display = 'none';
+
+    if (!email || !password) { errEl.textContent = 'Барлық өрістерді толтырыңыз'; errEl.style.display = 'block'; return; }
+
+    try {
+        const cred = await auth.signInWithEmailAndPassword(email, password);
+        const userDoc = await db.collection('users').doc(cred.user.uid).get();
+        const userData = userDoc.data();
+
+        if (!userData || (userData.role !== 'admin' && userData.role !== 'super-admin')) {
+            errEl.textContent = 'Сізде админ құқығы жоқ';
+            errEl.style.display = 'block';
+            await auth.signOut();
+            return;
+        }
+
+        currentAdmin = { ...userData, uid: cred.user.uid };
+        showAdmin();
+    } catch (e) {
+        errEl.textContent = 'Email немесе құпия сөз дұрыс емес';
+        errEl.style.display = 'block';
+    }
+});
+
+document.getElementById('adminLogoutBtn').addEventListener('click', async () => {
+    await auth.signOut();
+    currentAdmin = null;
+    document.getElementById('adminApp').style.display = 'none';
+    document.getElementById('adminLogin').style.display = 'flex';
+});
+
+auth.onAuthStateChanged(async user => {
+    if (user) {
+        const userDoc = await db.collection('users').doc(user.uid).get();
+        const userData = userDoc.exists ? userDoc.data() : null;
+        if (userData && (userData.role === 'admin' || userData.role === 'super-admin')) {
+            currentAdmin = { ...userData, uid: user.uid };
+            showAdmin();
+        }
+    }
+});
+
+function showAdmin() {
+    document.getElementById('adminLogin').style.display = 'none';
+    document.getElementById('adminApp').style.display = 'block';
+    document.getElementById('adminName').textContent = currentAdmin.name || currentAdmin.email;
+    loadDashboard();
+    loadUsers();
+    loadQuestions();
+}
+
+// Tabs
+document.querySelectorAll('.admin-nav button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.admin-nav button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+});
+
+// Dashboard
+async function loadDashboard() {
+    const usersSnap = await db.collection('users').get();
+    document.getElementById('statUsers').textContent = usersSnap.size;
+
+    let totalTests = 0;
+    let totalPercent = 0;
+    const recentResults = [];
+
+    for (const userDoc of usersSnap.docs) {
+        const resultsSnap = await db.collection('users').doc(userDoc.id)
+            .collection('results').orderBy('createdAt', 'desc').limit(5).get();
+        resultsSnap.forEach(r => {
+            const d = r.data();
+            totalTests++;
+            totalPercent += d.percent || 0;
+            if (recentResults.length < 10) {
+                recentResults.push({ user: userDoc.data().name || userDoc.data().email, ...d });
+            }
+        });
+    }
+
+    document.getElementById('statTests').textContent = totalTests;
+    document.getElementById('statAvg').textContent = totalTests > 0 ? Math.round(totalPercent / totalTests) + '%' : '0%';
+
+    const qSnap = await db.collection('questions').get();
+    document.getElementById('statQuestions').textContent = qSnap.size;
+
+    const tbody = document.getElementById('recentResults');
+    if (recentResults.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4">Нәтижелер жоқ</td></tr>';
+    } else {
+        tbody.innerHTML = recentResults.map(r => `
+            <tr>
+                <td>${r.user}</td>
+                <td>${r.test || '-'}</td>
+                <td>${r.correct || 0}/${r.total || 0} (${r.percent || 0}%)</td>
+                <td>${r.date || '-'}</td>
+            </tr>
+        `).join('');
+    }
+}
+
+// Users
+let allUsers = [];
+async function loadUsers() {
+    const snap = await db.collection('users').get();
+    allUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderUsers(allUsers);
+}
+
+function renderUsers(users) {
+    const tbody = document.getElementById('usersTable');
+    if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6">Пайдаланушылар жоқ</td></tr>';
+        return;
+    }
+    tbody.innerHTML = users.map(u => {
+        const roleBadge = u.role === 'super-admin' ? '<span class="badge badge-super">Super</span>'
+            : u.role === 'admin' ? '<span class="badge badge-admin">Admin</span>'
+            : '<span class="badge badge-student">Student</span>';
+        const created = u.createdAt ? (u.createdAt.toDate ? u.createdAt.toDate().toLocaleDateString('ru-RU') : '-') : '-';
+        return `<tr>
+            <td>${u.name || '-'}</td>
+            <td>${u.email || '-'}</td>
+            <td>${u.class || '-'}</td>
+            <td>${roleBadge}</td>
+            <td>${created}</td>
+            <td>
+                <button class="btn btn-blue" style="padding:4px 8px; font-size:0.8rem;" onclick="toggleRole('${u.id}', '${u.role}')">
+                    ${u.role === 'admin' ? 'Админ алу' : 'Админ беру'}
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+document.getElementById('userSearch').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase();
+    const filtered = allUsers.filter(u =>
+        (u.name || '').toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q)
+    );
+    renderUsers(filtered);
+});
+
+window.toggleRole = async function(userId, currentRole) {
+    const newRole = currentRole === 'admin' ? 'student' : 'admin';
+    await db.collection('users').doc(userId).update({ role: newRole });
+    loadUsers();
+};
+
+// Grant admin
+document.getElementById('grantAdminBtn').addEventListener('click', async () => {
+    const email = document.getElementById('grantAdminEmail').value.trim();
+    if (!email) return;
+
+    const snap = await db.collection('users').where('email', '==', email).get();
+    if (snap.empty) { alert('Пайдаланушы табылмады: ' + email); return; }
+
+    const userDoc = snap.docs[0];
+    await db.collection('users').doc(userDoc.id).update({ role: 'admin' });
+    alert(email + ' — админ рөлі берілді!');
+    document.getElementById('grantAdminEmail').value = '';
+    loadUsers();
+});
+
+// Questions
+let allQuestions = [];
+async function loadQuestions() {
+    const snap = await db.collection('questions').orderBy('category').get();
+    allQuestions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderQuestions();
+}
+
+function renderQuestions() {
+    const filter = document.getElementById('qFilterCategory').value;
+    const filtered = filter === 'all' ? allQuestions : allQuestions.filter(q => q.category === filter);
+    const tbody = document.getElementById('questionsTable');
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5">Сұрақтар жоқ</td></tr>';
+        return;
+    }
+
+    const cats = { math5: 'Мат 5', math6: 'Мат 6', math7: 'Мат 7', logic: 'Логика', ktl: 'КТЛ', olymp: 'Олимп' };
+    tbody.innerHTML = filtered.map((q, i) => {
+        const letters = ['A','B','C','D','E'];
+        return `<tr>
+            <td>${i + 1}</td>
+            <td>${q.q ? q.q.substring(0, 60) + (q.q.length > 60 ? '...' : '') : '-'}</td>
+            <td>${cats[q.category] || q.category}</td>
+            <td>${letters[q.correct] || '-'}</td>
+            <td>
+                <button class="btn btn-blue" style="padding:3px 8px; font-size:0.8rem;" onclick="editQuestion('${q.id}')"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-red" style="padding:3px 8px; font-size:0.8rem;" onclick="deleteQuestion('${q.id}')"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+document.getElementById('qFilterCategory').addEventListener('change', renderQuestions);
+
+// Question Modal
+document.getElementById('addQuestionBtn').addEventListener('click', () => {
+    editingQuestionId = null;
+    document.getElementById('qModalTitle').textContent = 'Сұрақ қосу';
+    document.getElementById('qText').value = '';
+    for (let i = 0; i < 5; i++) document.getElementById('qAns' + i).value = '';
+    document.querySelector('input[name="correctAns"][value="0"]').checked = true;
+    document.getElementById('questionModal').style.display = 'flex';
+});
+
+document.getElementById('cancelQuestionBtn').addEventListener('click', () => {
+    document.getElementById('questionModal').style.display = 'none';
+});
+
+document.getElementById('saveQuestionBtn').addEventListener('click', async () => {
+    const category = document.getElementById('qCategory').value;
+    const q = document.getElementById('qText').value.trim();
+    const answers = [];
+    for (let i = 0; i < 5; i++) {
+        answers.push(document.getElementById('qAns' + i).value.trim());
+    }
+    const correct = parseInt(document.querySelector('input[name="correctAns"]:checked').value);
+
+    if (!q || answers.some(a => !a)) { alert('Барлық өрістерді толтырыңыз'); return; }
+
+    const data = { q, a: answers, correct, category };
+
+    if (editingQuestionId) {
+        await db.collection('questions').doc(editingQuestionId).update(data);
+    } else {
+        await db.collection('questions').add(data);
+    }
+
+    document.getElementById('questionModal').style.display = 'none';
+    loadQuestions();
+    loadDashboard();
+});
+
+window.editQuestion = function(id) {
+    const q = allQuestions.find(x => x.id === id);
+    if (!q) return;
+    editingQuestionId = id;
+    document.getElementById('qModalTitle').textContent = 'Сұрақты өзгерту';
+    document.getElementById('qCategory').value = q.category;
+    document.getElementById('qText').value = q.q || '';
+    for (let i = 0; i < 5; i++) {
+        document.getElementById('qAns' + i).value = (q.a && q.a[i]) || '';
+    }
+    document.querySelector(`input[name="correctAns"][value="${q.correct}"]`).checked = true;
+    document.getElementById('questionModal').style.display = 'flex';
+};
+
+window.deleteQuestion = async function(id) {
+    if (!confirm('Сұрақты жою керек пе?')) return;
+    await db.collection('questions').doc(id).delete();
+    loadQuestions();
+    loadDashboard();
+};
+
+// Settings
+document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
+    await db.collection('settings').doc('general').set({
+        siteTitle: document.getElementById('settingSiteTitle').value,
+        homeText: document.getElementById('settingHomeText').value
+    });
+    alert('Баптаулар сақталды!');
+});
+
+// Load settings
+(async () => {
+    const doc = await db.collection('settings').doc('general').get();
+    if (doc.exists) {
+        const data = doc.data();
+        if (data.siteTitle) document.getElementById('settingSiteTitle').value = data.siteTitle;
+        if (data.homeText) document.getElementById('settingHomeText').value = data.homeText;
+    }
+})();
+</script>
+</body>
+</html>
