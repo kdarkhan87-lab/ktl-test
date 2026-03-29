@@ -182,6 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAuth();
     setupTests();
     setupScrollTop();
+    setupAdmin();
 
     auth.onAuthStateChanged(async user => {
         if (user) {
@@ -239,6 +240,29 @@ function setupNavigation() {
     });
 
     $$('.submenu li').forEach(li => {
+        li.addEventListener('click', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            const page = li.dataset.page;
+            if (!page) return;
+            if (!currentUser) { alert('Жүйеге кіріңіз'); return; }
+            showPage(page);
+            $('#sidebar').classList.remove('open');
+        });
+    });
+
+    // Admin menu: has-submenu toggle and submenu clicks
+    $$('#adminMenu > li').forEach(li => {
+        li.addEventListener('click', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (li.classList.contains('has-submenu')) {
+                li.classList.toggle('open');
+            }
+        });
+    });
+
+    $$('#adminMenu .submenu li').forEach(li => {
         li.addEventListener('click', e => {
             e.preventDefault();
             e.stopPropagation();
@@ -403,12 +427,29 @@ function updateUIForUser() {
 
         updateResultsTable();
         renderTestsList();
+
+        // Admin menu visibility
+        const adminMenu = $('#adminMenu');
+        if (adminMenu) {
+            if (currentUserData.role === 'admin' || currentUserData.role === 'super-admin') {
+                adminMenu.style.display = 'block';
+                loadAdminDashboard();
+                loadAdminUsers();
+                loadAdminQuestions();
+            } else {
+                adminMenu.style.display = 'none';
+            }
+        }
     } else {
         $('#loginBlock').style.display = 'block';
         $('#userPanel').style.display = 'none';
         $('#loginEmail').value = '';
         $('#loginPassword').value = '';
         renderTestsList();
+
+        // Hide admin menu when logged out
+        const adminMenu = $('#adminMenu');
+        if (adminMenu) adminMenu.style.display = 'none';
     }
 }
 
@@ -679,3 +720,301 @@ function shuffleArray(arr) {
     }
     return arr;
 }
+
+// ==================== ADMIN PANEL ====================
+let adminAllUsers = [];
+let adminAllQuestions = [];
+let adminEditingQuestionId = null;
+
+function setupAdmin() {
+    // Add Question button
+    const addQBtn = $('#adminAddQuestionBtn');
+    if (addQBtn) {
+        addQBtn.addEventListener('click', () => {
+            adminEditingQuestionId = null;
+            $('#adminQModalTitle').textContent = 'Сұрақ қосу';
+            $('#adminQText').value = '';
+            for (let i = 0; i < 5; i++) $(`#adminQAns${i}`).value = '';
+            document.querySelector('input[name="adminCorrectAns"][value="0"]').checked = true;
+            $('#adminQuestionModal').style.display = 'flex';
+        });
+    }
+
+    // Cancel question modal
+    const cancelBtn = $('#adminCancelQuestionBtn');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            $('#adminQuestionModal').style.display = 'none';
+        });
+    }
+
+    // Save question
+    const saveQBtn = $('#adminSaveQuestionBtn');
+    if (saveQBtn) {
+        saveQBtn.addEventListener('click', async () => {
+            const category = $('#adminQCategory').value;
+            const q = $('#adminQText').value.trim();
+            const answers = [];
+            for (let i = 0; i < 5; i++) {
+                answers.push($(`#adminQAns${i}`).value.trim());
+            }
+            const correct = parseInt(document.querySelector('input[name="adminCorrectAns"]:checked').value);
+
+            if (!q || answers.some(a => !a)) {
+                alert('Барлық өрістерді толтырыңыз');
+                return;
+            }
+
+            const data = { q, a: answers, correct, category };
+
+            try {
+                if (adminEditingQuestionId) {
+                    await db.collection('questions').doc(adminEditingQuestionId).update(data);
+                } else {
+                    await db.collection('questions').add(data);
+                }
+                $('#adminQuestionModal').style.display = 'none';
+                loadAdminQuestions();
+                loadAdminDashboard();
+            } catch (e) {
+                console.error('Error saving question:', e);
+                alert('Сақтау қатесі: ' + e.message);
+            }
+        });
+    }
+
+    // Category filter for questions
+    const qFilter = $('#adminQFilterCategory');
+    if (qFilter) {
+        qFilter.addEventListener('change', renderAdminQuestions);
+    }
+
+    // User search
+    const userSearch = $('#adminUserSearch');
+    if (userSearch) {
+        userSearch.addEventListener('input', e => {
+            const q = e.target.value.toLowerCase();
+            const filtered = adminAllUsers.filter(u =>
+                (u.name || '').toLowerCase().includes(q) ||
+                (u.email || '').toLowerCase().includes(q)
+            );
+            renderAdminUsers(filtered);
+        });
+    }
+
+    // Save settings
+    const saveSettBtn = $('#adminSaveSettingsBtn');
+    if (saveSettBtn) {
+        saveSettBtn.addEventListener('click', async () => {
+            try {
+                await db.collection('settings').doc('general').set({
+                    siteTitle: $('#adminSettingSiteTitle').value,
+                    homeText: $('#adminSettingHomeText').value
+                });
+                alert('Баптаулар сақталды!');
+            } catch (e) {
+                alert('Қате: ' + e.message);
+            }
+        });
+    }
+
+    // Grant admin
+    const grantBtn = $('#adminGrantAdminBtn');
+    if (grantBtn) {
+        grantBtn.addEventListener('click', async () => {
+            const email = $('#adminGrantAdminEmail').value.trim();
+            if (!email) return;
+
+            try {
+                const snap = await db.collection('users').where('email', '==', email).get();
+                if (snap.empty) {
+                    alert('Пайдаланушы табылмады: ' + email);
+                    return;
+                }
+                const userDoc = snap.docs[0];
+                await db.collection('users').doc(userDoc.id).update({ role: 'admin' });
+                alert(email + ' — админ рөлі берілді!');
+                $('#adminGrantAdminEmail').value = '';
+                loadAdminUsers();
+            } catch (e) {
+                alert('Қате: ' + e.message);
+            }
+        });
+    }
+}
+
+async function loadAdminDashboard() {
+    try {
+        const usersSnap = await db.collection('users').get();
+        const statUsersEl = $('#adminStatUsers');
+        if (statUsersEl) statUsersEl.textContent = usersSnap.size;
+
+        let totalTests = 0;
+        let totalPercent = 0;
+        const recentResults = [];
+
+        for (const userDoc of usersSnap.docs) {
+            const resultsSnap = await db.collection('users').doc(userDoc.id)
+                .collection('results').orderBy('createdAt', 'desc').limit(5).get();
+            resultsSnap.forEach(r => {
+                const d = r.data();
+                totalTests++;
+                totalPercent += d.percent || 0;
+                if (recentResults.length < 10) {
+                    recentResults.push({ user: userDoc.data().name || userDoc.data().email, ...d });
+                }
+            });
+        }
+
+        const statTestsEl = $('#adminStatTests');
+        if (statTestsEl) statTestsEl.textContent = totalTests;
+
+        const statAvgEl = $('#adminStatAvg');
+        if (statAvgEl) statAvgEl.textContent = totalTests > 0 ? Math.round(totalPercent / totalTests) + '%' : '0%';
+
+        const qSnap = await db.collection('questions').get();
+        const statQEl = $('#adminStatQuestions');
+        if (statQEl) statQEl.textContent = qSnap.size;
+
+        const tbody = $('#adminRecentResults');
+        if (tbody) {
+            if (recentResults.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4">Нәтижелер жоқ</td></tr>';
+            } else {
+                tbody.innerHTML = recentResults.map(r => `
+                    <tr>
+                        <td>${r.user}</td>
+                        <td>${r.test || '-'}</td>
+                        <td>${r.correct || 0}/${r.total || 0} (${r.percent || 0}%)</td>
+                        <td>${r.date || '-'}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        // Load settings into form
+        const settDoc = await db.collection('settings').doc('general').get();
+        if (settDoc.exists) {
+            const data = settDoc.data();
+            const titleEl = $('#adminSettingSiteTitle');
+            const textEl = $('#adminSettingHomeText');
+            if (data.siteTitle && titleEl) titleEl.value = data.siteTitle;
+            if (data.homeText && textEl) textEl.value = data.homeText;
+        }
+    } catch (e) {
+        console.error('Error loading admin dashboard:', e);
+    }
+}
+
+async function loadAdminUsers() {
+    try {
+        const snap = await db.collection('users').get();
+        adminAllUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderAdminUsers(adminAllUsers);
+    } catch (e) {
+        console.error('Error loading admin users:', e);
+    }
+}
+
+function renderAdminUsers(users) {
+    const tbody = $('#adminUsersTable');
+    if (!tbody) return;
+
+    if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6">Пайдаланушылар жоқ</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = users.map(u => {
+        const roleBadge = u.role === 'super-admin' ? '<span class="badge badge-super">Super</span>'
+            : u.role === 'admin' ? '<span class="badge badge-admin">Admin</span>'
+            : '<span class="badge badge-student">Student</span>';
+        const created = u.createdAt ? (u.createdAt.toDate ? u.createdAt.toDate().toLocaleDateString('ru-RU') : '-') : '-';
+        return `<tr>
+            <td>${u.name || '-'}</td>
+            <td>${u.email || '-'}</td>
+            <td>${u.class || '-'}</td>
+            <td>${roleBadge}</td>
+            <td>${created}</td>
+            <td>
+                <button class="admin-btn admin-btn-blue" style="padding:4px 8px; font-size:0.8rem;" onclick="adminToggleRole('${u.id}', '${u.role}')">
+                    ${u.role === 'admin' ? 'Админ алу' : 'Админ беру'}
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+window.adminToggleRole = async function(userId, currentRole) {
+    const newRole = currentRole === 'admin' ? 'student' : 'admin';
+    try {
+        await db.collection('users').doc(userId).update({ role: newRole });
+        loadAdminUsers();
+    } catch (e) {
+        alert('Қате: ' + e.message);
+    }
+};
+
+async function loadAdminQuestions() {
+    try {
+        const snap = await db.collection('questions').orderBy('category').get();
+        adminAllQuestions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderAdminQuestions();
+    } catch (e) {
+        console.error('Error loading admin questions:', e);
+    }
+}
+
+function renderAdminQuestions() {
+    const filterEl = $('#adminQFilterCategory');
+    const filter = filterEl ? filterEl.value : 'all';
+    const filtered = filter === 'all' ? adminAllQuestions : adminAllQuestions.filter(q => q.category === filter);
+    const tbody = $('#adminQuestionsTable');
+    if (!tbody) return;
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5">Сұрақтар жоқ</td></tr>';
+        return;
+    }
+
+    const cats = { math5: 'Мат 5', math6: 'Мат 6', math7: 'Мат 7', logic: 'Логика', ktl: 'КТЛ', olymp: 'Олимп' };
+    const letters = ['A', 'B', 'C', 'D', 'E'];
+
+    tbody.innerHTML = filtered.map((q, i) => `
+        <tr>
+            <td>${i + 1}</td>
+            <td>${q.q ? q.q.substring(0, 60) + (q.q.length > 60 ? '...' : '') : '-'}</td>
+            <td>${cats[q.category] || q.category}</td>
+            <td>${letters[q.correct] || '-'}</td>
+            <td>
+                <button class="admin-btn admin-btn-blue" style="padding:3px 8px; font-size:0.8rem;" onclick="adminEditQuestion('${q.id}')"><i class="fas fa-edit"></i></button>
+                <button class="admin-btn admin-btn-red" style="padding:3px 8px; font-size:0.8rem;" onclick="adminDeleteQuestion('${q.id}')"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+window.adminEditQuestion = function(id) {
+    const q = adminAllQuestions.find(x => x.id === id);
+    if (!q) return;
+    adminEditingQuestionId = id;
+    $('#adminQModalTitle').textContent = 'Сұрақты өзгерту';
+    $('#adminQCategory').value = q.category;
+    $('#adminQText').value = q.q || '';
+    for (let i = 0; i < 5; i++) {
+        $(`#adminQAns${i}`).value = (q.a && q.a[i]) || '';
+    }
+    document.querySelector(`input[name="adminCorrectAns"][value="${q.correct}"]`).checked = true;
+    $('#adminQuestionModal').style.display = 'flex';
+};
+
+window.adminDeleteQuestion = async function(id) {
+    if (!confirm('Сұрақты жою керек пе?')) return;
+    try {
+        await db.collection('questions').doc(id).delete();
+        loadAdminQuestions();
+        loadAdminDashboard();
+    } catch (e) {
+        alert('Қате: ' + e.message);
+    }
+};

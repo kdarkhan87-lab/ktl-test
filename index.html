@@ -7,6 +7,208 @@
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* ==================== ADMIN PANEL STYLES ==================== */
+        .admin-page-wrap {
+            background: #1a1a2e;
+            color: #e0e0e0;
+            border-radius: 12px;
+            padding: 25px;
+            min-height: 60vh;
+        }
+        .admin-card {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .admin-card h3 {
+            color: #2ecc71;
+            margin-bottom: 15px;
+        }
+        .admin-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .admin-stat-box {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        .admin-stat-box .number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2ecc71;
+        }
+        .admin-stat-box .label {
+            color: #aaa;
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .admin-table th,
+        .admin-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+        .admin-table th {
+            background: #0f3460;
+            color: #2ecc71;
+        }
+        .admin-table tr:hover {
+            background: rgba(46, 204, 113, 0.05);
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+        }
+        .badge-admin { background: #e74c3c; color: #fff; }
+        .badge-student { background: #3498db; color: #fff; }
+        .badge-super { background: #9b59b6; color: #fff; }
+        .admin-search-bar {
+            margin-bottom: 15px;
+        }
+        .admin-search-bar input {
+            width: 100%;
+            padding: 10px 15px;
+            background: #1a1a2e;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 0.95rem;
+        }
+        .admin-search-bar input:focus {
+            outline: none;
+            border-color: #2ecc71;
+        }
+        .admin-form-group {
+            margin-bottom: 12px;
+        }
+        .admin-form-group label {
+            display: block;
+            margin-bottom: 4px;
+            color: #aaa;
+            font-size: 0.85rem;
+        }
+        .admin-form-group input,
+        .admin-form-group select,
+        .admin-form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            background: #1a1a2e;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+        .admin-form-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        .admin-form-group input:focus,
+        .admin-form-group select:focus,
+        .admin-form-group textarea:focus {
+            outline: none;
+            border-color: #2ecc71;
+        }
+        .admin-action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .admin-action-bar h2 {
+            color: #2ecc71;
+            margin: 0;
+        }
+        .admin-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+        .admin-btn-green { background: #2ecc71; color: #fff; }
+        .admin-btn-green:hover { background: #27ae60; }
+        .admin-btn-red { background: #e74c3c; color: #fff; }
+        .admin-btn-red:hover { background: #c0392b; }
+        .admin-btn-blue { background: #3498db; color: #fff; }
+        .admin-btn-blue:hover { background: #2980b9; }
+        .admin-btn-outline { background: transparent; border: 1px solid #555; color: #ccc; }
+        .admin-btn-outline:hover { border-color: #2ecc71; color: #2ecc71; }
+        .admin-answer-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .admin-answer-input-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .admin-answer-input-row input[type="text"] {
+            flex: 1;
+            padding: 8px 12px;
+            background: #1a1a2e;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+        .admin-answer-input-row input[type="text"]:focus {
+            outline: none;
+            border-color: #2ecc71;
+        }
+        .admin-answer-input-row input[type="radio"] {
+            accent-color: #2ecc71;
+        }
+        .admin-answer-input-row label {
+            color: #2ecc71;
+            font-weight: 600;
+            min-width: 20px;
+        }
+        /* Question Modal Overlay */
+        #adminQuestionModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        #adminQuestionModal .admin-modal-inner {
+            background: #16213e;
+            padding: 30px;
+            border-radius: 12px;
+            width: 600px;
+            max-width: 95vw;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        #adminQuestionModal .admin-modal-inner h3 {
+            color: #2ecc71;
+            margin-bottom: 15px;
+        }
+        #adminMenu .submenu {
+            padding-left: 0;
+        }
+    </style>
 </head>
 <body>
     <!-- Sidebar -->
@@ -26,6 +228,17 @@
                 <ul class="submenu">
                     <li data-page="tests"><a href="#">Қолжетімді тесттер</a></li>
                     <li data-page="results"><a href="#">Менің нәтижелерім</a></li>
+                </ul>
+            </li>
+        </ul>
+        <ul class="sidebar-menu" id="adminMenu" style="display:none;">
+            <li data-page="admin-dashboard" class="has-submenu">
+                <a href="#"><i class="fas fa-chart-bar"></i> <span>Админ-панель</span> <i class="fas fa-chevron-right submenu-arrow"></i></a>
+                <ul class="submenu">
+                    <li data-page="admin-dashboard"><a href="#">Статистика</a></li>
+                    <li data-page="admin-users"><a href="#">Пайдаланушылар</a></li>
+                    <li data-page="admin-questions"><a href="#">Сұрақтар</a></li>
+                    <li data-page="admin-settings"><a href="#">Баптаулар</a></li>
                 </ul>
             </li>
         </ul>
@@ -244,6 +457,146 @@
                         </tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- ============ ADMIN DASHBOARD PAGE ============ -->
+        <div class="page" id="page-admin-dashboard">
+            <div class="admin-page-wrap">
+                <h2 style="color:#2ecc71; margin-bottom:15px;">Статистика</h2>
+                <div class="admin-stats-grid">
+                    <div class="admin-stat-box">
+                        <div class="number" id="adminStatUsers">0</div>
+                        <div class="label">Пайдаланушылар</div>
+                    </div>
+                    <div class="admin-stat-box">
+                        <div class="number" id="adminStatTests">0</div>
+                        <div class="label">Тесттер тапсырылды</div>
+                    </div>
+                    <div class="admin-stat-box">
+                        <div class="number" id="adminStatAvg">0%</div>
+                        <div class="label">Орташа балл</div>
+                    </div>
+                    <div class="admin-stat-box">
+                        <div class="number" id="adminStatQuestions">0</div>
+                        <div class="label">Сұрақтар саны</div>
+                    </div>
+                </div>
+                <div class="admin-card">
+                    <h3>Соңғы нәтижелер</h3>
+                    <table class="admin-table">
+                        <thead><tr><th>Пайдаланушы</th><th>Тест</th><th>Нәтиже</th><th>Күні</th></tr></thead>
+                        <tbody id="adminRecentResults"><tr><td colspan="4">Жүктелуде...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ ADMIN USERS PAGE ============ -->
+        <div class="page" id="page-admin-users">
+            <div class="admin-page-wrap">
+                <div class="admin-action-bar">
+                    <h2>Пайдаланушылар</h2>
+                </div>
+                <div class="admin-search-bar">
+                    <input type="text" id="adminUserSearch" placeholder="Іздеу (аты немесе email)...">
+                </div>
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead><tr><th>Аты</th><th>Email</th><th>Сынып</th><th>Рөлі</th><th>Тіркелген</th><th>Әрекеттер</th></tr></thead>
+                        <tbody id="adminUsersTable"><tr><td colspan="6">Жүктелуде...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ ADMIN QUESTIONS PAGE ============ -->
+        <div class="page" id="page-admin-questions">
+            <div class="admin-page-wrap">
+                <div class="admin-action-bar">
+                    <h2>Сұрақтар базасы</h2>
+                    <button class="admin-btn admin-btn-green" id="adminAddQuestionBtn"><i class="fas fa-plus"></i> Сұрақ қосу</button>
+                </div>
+                <div class="admin-form-group" style="margin-bottom:15px;">
+                    <select id="adminQFilterCategory">
+                        <option value="all">Барлық категориялар</option>
+                        <option value="math5">Математика 5 класс</option>
+                        <option value="math6">Математика 6 класс</option>
+                        <option value="math7">Математика 7 класс</option>
+                        <option value="logic">Логика</option>
+                        <option value="ktl">КТЛ вступительный</option>
+                        <option value="olymp">Олимпиадные</option>
+                    </select>
+                </div>
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead><tr><th>#</th><th>Сұрақ</th><th>Категория</th><th>Дұрыс жауап</th><th>Әрекеттер</th></tr></thead>
+                        <tbody id="adminQuestionsTable"><tr><td colspan="5">Жүктелуде...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ ADMIN SETTINGS PAGE ============ -->
+        <div class="page" id="page-admin-settings">
+            <div class="admin-page-wrap">
+                <h2 style="color:#2ecc71; margin-bottom:15px;">Баптаулар</h2>
+                <div class="admin-card">
+                    <h3>Сайт мәтіндері</h3>
+                    <div class="admin-form-group">
+                        <label>Сайт тақырыбы</label>
+                        <input type="text" id="adminSettingSiteTitle" value="KTL Test">
+                    </div>
+                    <div class="admin-form-group">
+                        <label>Бас бет мәтіні</label>
+                        <textarea id="adminSettingHomeText">Система тестирования ktltest.kz...</textarea>
+                    </div>
+                    <button class="admin-btn admin-btn-green" id="adminSaveSettingsBtn"><i class="fas fa-save"></i> Сақтау</button>
+                </div>
+                <div class="admin-card">
+                    <h3>Админ рөлін беру</h3>
+                    <div class="admin-form-group">
+                        <label>Пайдаланушы email</label>
+                        <input type="email" id="adminGrantAdminEmail" placeholder="user@example.com">
+                    </div>
+                    <button class="admin-btn admin-btn-blue" id="adminGrantAdminBtn"><i class="fas fa-user-shield"></i> Админ рөлін беру</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ ADMIN QUESTION MODAL ============ -->
+        <div id="adminQuestionModal">
+            <div class="admin-modal-inner">
+                <h3 id="adminQModalTitle">Сұрақ қосу</h3>
+                <div class="admin-form-group">
+                    <label>Категория</label>
+                    <select id="adminQCategory">
+                        <option value="math5">Математика 5 класс</option>
+                        <option value="math6">Математика 6 класс</option>
+                        <option value="math7">Математика 7 класс</option>
+                        <option value="logic">Логика</option>
+                        <option value="ktl">КТЛ вступительный</option>
+                        <option value="olymp">Олимпиадные</option>
+                    </select>
+                </div>
+                <div class="admin-form-group">
+                    <label>Сұрақ мәтіні</label>
+                    <textarea id="adminQText" placeholder="Сұрақ мәтінін жазыңыз..."></textarea>
+                </div>
+                <div class="admin-form-group">
+                    <label>Жауаптар (дұрыс жауапты таңдаңыз)</label>
+                    <div class="admin-answer-inputs">
+                        <div class="admin-answer-input-row"><input type="radio" name="adminCorrectAns" value="0" checked><label>A.</label><input type="text" id="adminQAns0" placeholder="Жауап A"></div>
+                        <div class="admin-answer-input-row"><input type="radio" name="adminCorrectAns" value="1"><label>B.</label><input type="text" id="adminQAns1" placeholder="Жауап B"></div>
+                        <div class="admin-answer-input-row"><input type="radio" name="adminCorrectAns" value="2"><label>C.</label><input type="text" id="adminQAns2" placeholder="Жауап C"></div>
+                        <div class="admin-answer-input-row"><input type="radio" name="adminCorrectAns" value="3"><label>D.</label><input type="text" id="adminQAns3" placeholder="Жауап D"></div>
+                        <div class="admin-answer-input-row"><input type="radio" name="adminCorrectAns" value="4"><label>E.</label><input type="text" id="adminQAns4" placeholder="Жауап E"></div>
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <button class="admin-btn admin-btn-green" id="adminSaveQuestionBtn"><i class="fas fa-save"></i> Сақтау</button>
+                    <button class="admin-btn admin-btn-outline" id="adminCancelQuestionBtn">Болдырмау</button>
+                </div>
             </div>
         </div>
 
