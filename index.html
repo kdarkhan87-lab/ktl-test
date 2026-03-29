@@ -602,6 +602,28 @@
         <div class="page" id="page-admin-settings">
             <div class="admin-page-wrap">
                 <h2 style="color:#2ecc71; margin-bottom:15px;">Баптаулар</h2>
+
+                <!-- CATEGORIES MANAGEMENT -->
+                <div class="admin-card">
+                    <h3>Бөлімдер (Категориялар)</h3>
+                    <p style="color:#aaa; margin-bottom:10px;">Жаңа бөлім қосу — тесттер мен сұрақтар осы бөлімдерге бөлінеді</p>
+                    <table class="admin-table" style="margin-bottom:15px;">
+                        <thead><tr><th>ID</th><th>Аты</th><th>Әрекеттер</th></tr></thead>
+                        <tbody id="adminCategoriesTable"><tr><td colspan="3">Жүктелуде...</td></tr></tbody>
+                    </table>
+                    <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+                        <div class="admin-form-group" style="margin-bottom:0; flex:1; min-width:120px;">
+                            <label>ID (латын, мыс: math8)</label>
+                            <input type="text" id="adminNewCatId" placeholder="math8">
+                        </div>
+                        <div class="admin-form-group" style="margin-bottom:0; flex:2; min-width:200px;">
+                            <label>Аты (мыс: Математика 8 класс)</label>
+                            <input type="text" id="adminNewCatName" placeholder="Математика 8 класс">
+                        </div>
+                        <button class="admin-btn admin-btn-green" id="adminAddCategoryBtn" style="height:38px;"><i class="fas fa-plus"></i> Қосу</button>
+                    </div>
+                </div>
+
                 <div class="admin-card">
                     <h3>Сайт мәтіндері</h3>
                     <div class="admin-form-group">

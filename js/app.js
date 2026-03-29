@@ -181,6 +181,114 @@ function showToast(msg, type = 'info') {
     }, 3000);
 }
 
+// ==================== CATEGORIES ====================
+// Default categories (will be overridden by Firestore)
+let categories = [
+    { id: 'math5', name: 'Математика 5 класс' },
+    { id: 'math6', name: 'Математика 6 класс' },
+    { id: 'math7', name: 'Математика 7 класс' },
+    { id: 'logic', name: 'Логика' },
+    { id: 'ktl', name: 'КТЛ вступительный' },
+    { id: 'olymp', name: 'Олимпиадные' }
+];
+
+async function loadCategories() {
+    try {
+        const doc = await db.collection('settings').doc('categories').get();
+        if (doc.exists && doc.data().list && doc.data().list.length > 0) {
+            categories = doc.data().list;
+        }
+    } catch (e) {
+        console.error('Error loading categories:', e);
+    }
+    updateCategorySelects();
+}
+
+async function saveCategories() {
+    try {
+        await db.collection('settings').doc('categories').set({ list: categories });
+    } catch (e) {
+        showToast('Қате: ' + e.message, 'error');
+    }
+}
+
+function updateCategorySelects() {
+    // Update all category select elements
+    const selects = [
+        '#adminQFilterCategory',
+        '#adminQCategory',
+        '#adminTestCategory'
+    ];
+
+    selects.forEach(sel => {
+        const el = document.querySelector(sel);
+        if (!el) return;
+
+        const currentVal = el.value;
+        // For filter select, keep "all" option
+        if (sel === '#adminQFilterCategory') {
+            el.innerHTML = '<option value="all">Барлық категориялар</option>';
+        } else {
+            el.innerHTML = '';
+        }
+        categories.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat.id;
+            opt.textContent = sel === '#adminTestCategory' ? `${cat.id} — ${cat.name}` : cat.name;
+            el.appendChild(opt);
+        });
+        // Restore selection if valid
+        if (currentVal && [...el.options].some(o => o.value === currentVal)) {
+            el.value = currentVal;
+        }
+    });
+
+    // Render categories table in settings
+    renderCategoriesTable();
+}
+
+function renderCategoriesTable() {
+    const tbody = document.getElementById('adminCategoriesTable');
+    if (!tbody) return;
+
+    if (categories.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3">Категориялар жоқ</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = categories.map(cat => `
+        <tr>
+            <td><code style="background:#2a2a4a; padding:2px 8px; border-radius:4px;">${cat.id}</code></td>
+            <td>${cat.name}</td>
+            <td>
+                <button class="admin-btn admin-btn-red" style="padding:3px 8px; font-size:0.8rem;" onclick="adminDeleteCategory('${cat.id}')"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function getCategoryName(id) {
+    const cat = categories.find(c => c.id === id);
+    return cat ? cat.name : id;
+}
+
+function getCategoryShort(id) {
+    const cat = categories.find(c => c.id === id);
+    if (!cat) return id;
+    // Short name for tables
+    const name = cat.name;
+    if (name.length <= 10) return name;
+    return name.replace('Математика ', 'Мат ').replace(' класс', '').replace('вступительный', '');
+}
+
+window.adminDeleteCategory = async function(id) {
+    if (!confirm(`"${getCategoryName(id)}" бөлімін жою керек пе?`)) return;
+    categories = categories.filter(c => c.id !== id);
+    await saveCategories();
+    updateCategorySelects();
+    showToast('Бөлім жойылды', 'success');
+};
+
 // ==================== STATE ====================
 let currentUser = null;
 let currentUserData = null;
@@ -209,6 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (user) {
             currentUser = user;
             await loadUserData();
+            await loadCategories();
             await loadTestsFromFirestore();
             updateUIForUser();
         } else {
@@ -868,6 +977,31 @@ function setupAdmin() {
         });
     }
 
+    // ---- CATEGORY MANAGEMENT ----
+    const addCatBtn = $('#adminAddCategoryBtn');
+    if (addCatBtn) {
+        addCatBtn.addEventListener('click', async () => {
+            const id = $('#adminNewCatId').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+            const name = $('#adminNewCatName').value.trim();
+
+            if (!id || !name) {
+                showToast('ID мен атын толтырыңыз', 'warning');
+                return;
+            }
+            if (categories.find(c => c.id === id)) {
+                showToast('Бұл ID бар: ' + id, 'warning');
+                return;
+            }
+
+            categories.push({ id, name });
+            await saveCategories();
+            updateCategorySelects();
+            $('#adminNewCatId').value = '';
+            $('#adminNewCatName').value = '';
+            showToast(`"${name}" бөлімі қосылды!`, 'success');
+        });
+    }
+
     // ---- TEST MANAGEMENT ----
     const addTestBtn = $('#adminAddTestBtn');
     if (addTestBtn) {
@@ -1071,7 +1205,6 @@ function renderAdminQuestions() {
         return;
     }
 
-    const cats = { math5: 'Мат 5', math6: 'Мат 6', math7: 'Мат 7', logic: 'Логика', ktl: 'КТЛ', olymp: 'Олимп' };
     const letters = ['A', 'B', 'C', 'D', 'E'];
 
     tbody.innerHTML = filtered.map((q, i) => {
@@ -1084,7 +1217,7 @@ function renderAdminQuestions() {
             <td>${i + 1}</td>
             <td style="max-width:300px;">${q.q || '-'}</td>
             <td style="max-width:400px;">${answersHtml}</td>
-            <td>${cats[q.category] || q.category}</td>
+            <td>${getCategoryShort(q.category)}</td>
             <td style="white-space:nowrap;">
                 <button class="admin-btn admin-btn-blue" style="padding:3px 8px; font-size:0.8rem;" onclick="adminEditQuestion('${q.id}')"><i class="fas fa-edit"></i></button>
                 <button class="admin-btn admin-btn-red" style="padding:3px 8px; font-size:0.8rem;" onclick="adminDeleteQuestion('${q.id}')"><i class="fas fa-trash"></i></button>
@@ -1144,13 +1277,11 @@ function renderAdminTests() {
         return;
     }
 
-    const cats = { math5: 'Мат 5', math6: 'Мат 6', math7: 'Мат 7', logic: 'Логика', ktl: 'КТЛ', olymp: 'Олимп' };
-
     tbody.innerHTML = adminAllTests.map((t, i) => {
         return `<tr>
             <td>${i + 1}</td>
             <td>${t.name || '-'}</td>
-            <td>${cats[t.category] || t.category}</td>
+            <td>${getCategoryShort(t.category)}</td>
             <td>${t.questions || '-'}</td>
             <td>${t.time || '-'} мин</td>
             <td id="testQCount_${t.id}">...</td>
@@ -1201,6 +1332,9 @@ async function importHardcodedData() {
     if (statusEl) statusEl.textContent = 'Импорт басталды...';
 
     try {
+        // 0. Save default categories if not already saved
+        await saveCategories();
+
         // 1. Import tests
         const batch1 = db.batch();
         testsList.forEach((t, i) => {
