@@ -237,6 +237,7 @@
                 <ul class="submenu">
                     <li data-page="admin-dashboard"><a href="#">Статистика</a></li>
                     <li data-page="admin-users"><a href="#">Пайдаланушылар</a></li>
+                    <li data-page="admin-tests"><a href="#">Тесттер</a></li>
                     <li data-page="admin-questions"><a href="#">Сұрақтар</a></li>
                     <li data-page="admin-settings"><a href="#">Баптаулар</a></li>
                 </ul>
@@ -510,6 +511,66 @@
             </div>
         </div>
 
+        <!-- ============ ADMIN TESTS PAGE ============ -->
+        <div class="page" id="page-admin-tests">
+            <div class="admin-page-wrap">
+                <div class="admin-action-bar">
+                    <h2>Тесттер басқару</h2>
+                    <button class="admin-btn admin-btn-green" id="adminAddTestBtn"><i class="fas fa-plus"></i> Тест қосу</button>
+                </div>
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead><tr><th>#</th><th>Тест аты</th><th>Категория</th><th>Сұрақ саны</th><th>Уақыт</th><th>Сұрақтар (база)</th><th>Әрекеттер</th></tr></thead>
+                        <tbody id="adminTestsTable"><tr><td colspan="7">Жүктелуде...</td></tr></tbody>
+                    </table>
+                </div>
+                <div class="admin-card" style="margin-top:15px;">
+                    <h3 style="color:#f39c12; margin-bottom:10px;">⚡ Деректерді импорттау</h3>
+                    <p style="color:#aaa; margin-bottom:10px;">Кодтағы тесттер мен сұрақтарды Firestore-ға көшіру (бір рет)</p>
+                    <button class="admin-btn admin-btn-blue" id="adminImportDataBtn"><i class="fas fa-upload"></i> Импорт (тесттер + сұрақтар)</button>
+                    <span id="adminImportStatus" style="color:#2ecc71; margin-left:10px;"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ ADMIN TEST MODAL ============ -->
+        <div id="adminTestModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+            <div class="admin-modal-inner" style="max-width:550px;">
+                <h3 id="adminTestModalTitle">Тест қосу</h3>
+                <div class="admin-form-group">
+                    <label>Тест аты</label>
+                    <input type="text" id="adminTestName" placeholder="Мысалы: Кіріспе сынақ тесті">
+                </div>
+                <div class="admin-form-group">
+                    <label>Категория (ID)</label>
+                    <select id="adminTestCategory">
+                        <option value="math5">math5 — Математика 5 класс</option>
+                        <option value="math6">math6 — Математика 6 класс</option>
+                        <option value="math7">math7 — Математика 7 класс</option>
+                        <option value="logic">logic — Логика</option>
+                        <option value="ktl">ktl — КТЛ вступительный</option>
+                        <option value="olymp">olymp — Олимпиадные</option>
+                    </select>
+                </div>
+                <div class="admin-form-group">
+                    <label>Сұрақ саны</label>
+                    <input type="number" id="adminTestQuestions" value="10" min="1" max="100">
+                </div>
+                <div class="admin-form-group">
+                    <label>Уақыт (минут)</label>
+                    <input type="number" id="adminTestTime" value="20" min="1" max="180">
+                </div>
+                <div class="admin-form-group">
+                    <label>Тақырыптар (үтірмен бөлу)</label>
+                    <input type="text" id="adminTestTopics" placeholder="Арифметика, Алгебра, Логика">
+                </div>
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <button class="admin-btn admin-btn-green" id="adminSaveTestBtn"><i class="fas fa-save"></i> Сақтау</button>
+                    <button class="admin-btn admin-btn-outline" id="adminCancelTestBtn">Болдырмау</button>
+                </div>
+            </div>
+        </div>
+
         <!-- ============ ADMIN QUESTIONS PAGE ============ -->
         <div class="page" id="page-admin-questions">
             <div class="admin-page-wrap">
@@ -530,7 +591,7 @@
                 </div>
                 <div class="admin-card">
                     <table class="admin-table">
-                        <thead><tr><th>#</th><th>Сұрақ</th><th>Категория</th><th>Дұрыс жауап</th><th>Әрекеттер</th></tr></thead>
+                        <thead><tr><th>#</th><th>Сұрақ</th><th>Жауаптар</th><th>Категория</th><th>Әрекеттер</th></tr></thead>
                         <tbody id="adminQuestionsTable"><tr><td colspan="5">Жүктелуде...</td></tr></tbody>
                     </table>
                 </div>

@@ -209,6 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (user) {
             currentUser = user;
             await loadUserData();
+            await loadTestsFromFirestore();
             updateUIForUser();
         } else {
             currentUser = null;
@@ -443,6 +444,7 @@ function updateUIForUser() {
                 adminMenu.style.display = 'block';
                 loadAdminDashboard();
                 loadAdminUsers();
+                loadAdminTests();
                 loadAdminQuestions();
             } else {
                 adminMenu.style.display = 'none';
@@ -506,14 +508,30 @@ function setupTests() {
 }
 
 // ==================== START TEST ====================
-window.startTest = function(testId) {
+window.startTest = async function(testId) {
     if (!currentUser) { showToast('Жүйеге кіріңіз', 'warning'); return; }
 
     const testInfo = testsList.find(t => t.id === testId);
     if (!testInfo) return;
 
     const cat = testInfo.category;
-    const bank = questionBank[cat] || questionBank.math5;
+
+    // Try loading questions from Firestore first
+    let bank = [];
+    try {
+        const qSnap = await db.collection('questions').where('category', '==', cat).get();
+        if (qSnap.size > 0) {
+            bank = qSnap.docs.map(d => d.data());
+        }
+    } catch (e) {
+        console.error('Error loading questions from Firestore:', e);
+    }
+
+    // Fallback to hardcoded questions
+    if (bank.length === 0) {
+        bank = questionBank[cat] || questionBank.math5;
+    }
+
     const count = Math.min(testInfo.questions, bank.length);
 
     currentTest = testInfo;
@@ -849,6 +867,74 @@ function setupAdmin() {
             }
         });
     }
+
+    // ---- TEST MANAGEMENT ----
+    const addTestBtn = $('#adminAddTestBtn');
+    if (addTestBtn) {
+        addTestBtn.addEventListener('click', () => {
+            adminEditingTestId = null;
+            $('#adminTestModalTitle').textContent = 'Тест қосу';
+            $('#adminTestName').value = '';
+            $('#adminTestCategory').value = 'math5';
+            $('#adminTestQuestions').value = 10;
+            $('#adminTestTime').value = 20;
+            $('#adminTestTopics').value = '';
+            $('#adminTestModal').style.display = 'flex';
+        });
+    }
+
+    const cancelTestBtn = $('#adminCancelTestBtn');
+    if (cancelTestBtn) {
+        cancelTestBtn.addEventListener('click', () => {
+            $('#adminTestModal').style.display = 'none';
+        });
+    }
+
+    const saveTestBtn = $('#adminSaveTestBtn');
+    if (saveTestBtn) {
+        saveTestBtn.addEventListener('click', async () => {
+            const name = $('#adminTestName').value.trim();
+            const category = $('#adminTestCategory').value;
+            const questions = parseInt($('#adminTestQuestions').value) || 10;
+            const time = parseInt($('#adminTestTime').value) || 20;
+            const topicsStr = $('#adminTestTopics').value.trim();
+            const topics = topicsStr ? topicsStr.split(',').map(t => t.trim()).filter(t => t) : [];
+
+            if (!name) {
+                showToast('Тест атын жазыңыз', 'warning');
+                return;
+            }
+
+            const data = { name, category, questions, time, topics, order: adminAllTests.length };
+
+            try {
+                if (adminEditingTestId) {
+                    await db.collection('tests').doc(adminEditingTestId).update(data);
+                    showToast('Тест жаңартылды', 'success');
+                } else {
+                    await db.collection('tests').add(data);
+                    showToast('Тест қосылды', 'success');
+                }
+                $('#adminTestModal').style.display = 'none';
+                loadAdminTests();
+                // Reload for students too
+                await loadTestsFromFirestore();
+                renderTestsList();
+            } catch (e) {
+                showToast('Қате: ' + e.message, 'error');
+            }
+        });
+    }
+
+    // Import data button
+    const importBtn = $('#adminImportDataBtn');
+    if (importBtn) {
+        importBtn.addEventListener('click', () => {
+            if (confirm('Кодтағы барлық тесттер мен сұрақтарды Firestore-ға импорттау керек пе?')) {
+                importHardcodedData();
+            }
+        });
+    }
 }
 
 async function loadAdminDashboard() {
@@ -981,25 +1067,30 @@ function renderAdminQuestions() {
     if (!tbody) return;
 
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5">Сұрақтар жоқ</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5">Сұрақтар жоқ. Деректерді импорттау үшін "Тесттер" бөліміне өтіңіз.</td></tr>';
         return;
     }
 
     const cats = { math5: 'Мат 5', math6: 'Мат 6', math7: 'Мат 7', logic: 'Логика', ktl: 'КТЛ', olymp: 'Олимп' };
     const letters = ['A', 'B', 'C', 'D', 'E'];
 
-    tbody.innerHTML = filtered.map((q, i) => `
-        <tr>
+    tbody.innerHTML = filtered.map((q, i) => {
+        const answersHtml = (q.a || []).map((ans, ai) => {
+            const isCorrect = ai === q.correct;
+            return `<span style="display:inline-block; padding:2px 6px; margin:1px 3px; border-radius:4px; font-size:0.8rem; ${isCorrect ? 'background:#2ecc71; color:#fff; font-weight:bold;' : 'background:#2a2a4a; color:#ccc;'}">${letters[ai]}. ${ans}</span>`;
+        }).join('');
+
+        return `<tr>
             <td>${i + 1}</td>
-            <td>${q.q ? q.q.substring(0, 60) + (q.q.length > 60 ? '...' : '') : '-'}</td>
+            <td style="max-width:300px;">${q.q || '-'}</td>
+            <td style="max-width:400px;">${answersHtml}</td>
             <td>${cats[q.category] || q.category}</td>
-            <td>${letters[q.correct] || '-'}</td>
-            <td>
+            <td style="white-space:nowrap;">
                 <button class="admin-btn admin-btn-blue" style="padding:3px 8px; font-size:0.8rem;" onclick="adminEditQuestion('${q.id}')"><i class="fas fa-edit"></i></button>
                 <button class="admin-btn admin-btn-red" style="padding:3px 8px; font-size:0.8rem;" onclick="adminDeleteQuestion('${q.id}')"><i class="fas fa-trash"></i></button>
             </td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
 }
 
 window.adminEditQuestion = function(id) {
@@ -1026,3 +1117,168 @@ window.adminDeleteQuestion = async function(id) {
         showToast('Қате: ' + e.message, 'error');
     }
 };
+
+// ==================== ADMIN: TESTS MANAGEMENT ====================
+let adminAllTests = [];
+let adminEditingTestId = null;
+
+async function loadAdminTests() {
+    try {
+        const snap = await db.collection('tests').orderBy('order').get();
+        adminAllTests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderAdminTests();
+    } catch (e) {
+        console.error('Error loading admin tests:', e);
+        // If no tests in Firestore yet, show empty
+        adminAllTests = [];
+        renderAdminTests();
+    }
+}
+
+function renderAdminTests() {
+    const tbody = $('#adminTestsTable');
+    if (!tbody) return;
+
+    if (adminAllTests.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Тесттер жоқ. Деректерді импорттаңыз немесе жаңа тест қосыңыз.</td></tr>';
+        return;
+    }
+
+    const cats = { math5: 'Мат 5', math6: 'Мат 6', math7: 'Мат 7', logic: 'Логика', ktl: 'КТЛ', olymp: 'Олимп' };
+
+    tbody.innerHTML = adminAllTests.map((t, i) => {
+        return `<tr>
+            <td>${i + 1}</td>
+            <td>${t.name || '-'}</td>
+            <td>${cats[t.category] || t.category}</td>
+            <td>${t.questions || '-'}</td>
+            <td>${t.time || '-'} мин</td>
+            <td id="testQCount_${t.id}">...</td>
+            <td>
+                <button class="admin-btn admin-btn-blue" style="padding:3px 8px; font-size:0.8rem;" onclick="adminEditTest('${t.id}')"><i class="fas fa-edit"></i></button>
+                <button class="admin-btn admin-btn-red" style="padding:3px 8px; font-size:0.8rem;" onclick="adminDeleteTest('${t.id}')"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    // Load question counts per category
+    adminAllTests.forEach(async t => {
+        try {
+            const qSnap = await db.collection('questions').where('category', '==', t.category).get();
+            const el = $(`#testQCount_${t.id}`);
+            if (el) el.textContent = qSnap.size;
+        } catch (e) { /* ignore */ }
+    });
+}
+
+window.adminEditTest = function(id) {
+    const t = adminAllTests.find(x => x.id === id);
+    if (!t) return;
+    adminEditingTestId = id;
+    $('#adminTestModalTitle').textContent = 'Тестті өзгерту';
+    $('#adminTestName').value = t.name || '';
+    $('#adminTestCategory').value = t.category || 'math5';
+    $('#adminTestQuestions').value = t.questions || 10;
+    $('#adminTestTime').value = t.time || 20;
+    $('#adminTestTopics').value = (t.topics || []).join(', ');
+    $('#adminTestModal').style.display = 'flex';
+};
+
+window.adminDeleteTest = async function(id) {
+    if (!confirm('Тестті жою керек пе?')) return;
+    try {
+        await db.collection('tests').doc(id).delete();
+        loadAdminTests();
+        showToast('Тест жойылды', 'success');
+    } catch (e) {
+        showToast('Қате: ' + e.message, 'error');
+    }
+};
+
+// ==================== ADMIN: IMPORT DATA ====================
+async function importHardcodedData() {
+    const statusEl = $('#adminImportStatus');
+    if (statusEl) statusEl.textContent = 'Импорт басталды...';
+
+    try {
+        // 1. Import tests
+        const batch1 = db.batch();
+        testsList.forEach((t, i) => {
+            const ref = db.collection('tests').doc(t.id);
+            batch1.set(ref, {
+                name: t.name,
+                category: t.category,
+                questions: t.questions,
+                time: t.time,
+                topics: t.topics,
+                order: i
+            }, { merge: true });
+        });
+        await batch1.commit();
+        if (statusEl) statusEl.textContent = `${testsList.length} тест импортталды. Сұрақтар жүктелуде...`;
+
+        // 2. Import questions (in batches of 500)
+        let totalQ = 0;
+        for (const [cat, questions] of Object.entries(questionBank)) {
+            // Process in chunks of 400 (Firestore batch limit is 500)
+            for (let i = 0; i < questions.length; i += 400) {
+                const chunk = questions.slice(i, i + 400);
+                const batch = db.batch();
+                chunk.forEach(q => {
+                    const ref = db.collection('questions').doc();
+                    batch.set(ref, {
+                        q: q.q,
+                        a: q.a,
+                        correct: q.correct,
+                        category: cat
+                    });
+                });
+                await batch.commit();
+                totalQ += chunk.length;
+                if (statusEl) statusEl.textContent = `${totalQ} сұрақ импортталды...`;
+            }
+        }
+
+        if (statusEl) statusEl.textContent = `✅ Дайын! ${testsList.length} тест, ${totalQ} сұрақ импортталды.`;
+        showToast(`Импорт аяқталды: ${testsList.length} тест, ${totalQ} сұрақ`, 'success');
+
+        // Reload admin data
+        loadAdminTests();
+        loadAdminQuestions();
+        loadAdminDashboard();
+
+        // Reload tests for students
+        await loadTestsFromFirestore();
+        renderTestsList();
+
+    } catch (e) {
+        console.error('Import error:', e);
+        if (statusEl) statusEl.textContent = '❌ Қате: ' + e.message;
+        showToast('Импорт қатесі: ' + e.message, 'error');
+    }
+}
+
+// ==================== LOAD TESTS FROM FIRESTORE ====================
+async function loadTestsFromFirestore() {
+    try {
+        const snap = await db.collection('tests').orderBy('order').get();
+        if (snap.size > 0) {
+            // Replace hardcoded testsList with Firestore data
+            testsList.length = 0;
+            snap.forEach(doc => {
+                const d = doc.data();
+                testsList.push({
+                    id: doc.id,
+                    name: d.name,
+                    category: d.category,
+                    questions: d.questions,
+                    time: d.time,
+                    topics: d.topics || []
+                });
+            });
+        }
+    } catch (e) {
+        console.error('Error loading tests from Firestore:', e);
+        // Keep using hardcoded testsList as fallback
+    }
+}
