@@ -251,29 +251,6 @@ function setupNavigation() {
         });
     });
 
-    // Admin menu: has-submenu toggle and submenu clicks
-    $$('#adminMenu > li').forEach(li => {
-        li.addEventListener('click', e => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (li.classList.contains('has-submenu')) {
-                li.classList.toggle('open');
-            }
-        });
-    });
-
-    $$('#adminMenu .submenu li').forEach(li => {
-        li.addEventListener('click', e => {
-            e.preventDefault();
-            e.stopPropagation();
-            const page = li.dataset.page;
-            if (!page) return;
-            if (!currentUser) { alert('Жүйеге кіріңіз'); return; }
-            showPage(page);
-            $('#sidebar').classList.remove('open');
-        });
-    });
-
     $('#menuToggle').addEventListener('click', () => $('#sidebar').classList.toggle('open'));
 }
 
