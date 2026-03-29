@@ -160,6 +160,27 @@ const questionBank = {
     ]
 };
 
+// ==================== TOAST NOTIFICATIONS ====================
+function showToast(msg, type = 'info') {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10000;display:flex;flex-direction:column;gap:10px;';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    const colors = { success: '#2ecc71', error: '#e74c3c', info: '#3498db', warning: '#f39c12' };
+    toast.style.cssText = `background:${colors[type] || colors.info};color:#fff;padding:12px 20px;border-radius:8px;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.3);opacity:0;transition:opacity 0.3s;max-width:350px;`;
+    toast.textContent = msg;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.style.opacity = '1');
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
 // ==================== STATE ====================
 let currentUser = null;
 let currentUserData = null;
@@ -225,7 +246,7 @@ function setupNavigation() {
             e.stopPropagation();
             const page = submenuLi.dataset.page;
             if (!page) return;
-            if (!currentUser) { alert('Жүйеге кіріңіз'); return; }
+            if (!currentUser) { showToast('Жүйеге кіріңіз', 'warning'); return; }
             showPage(page);
             sidebar.classList.remove('open');
             return;
@@ -246,7 +267,7 @@ function setupNavigation() {
             if (!page) return;
 
             if (page !== 'home' && !currentUser) {
-                alert('Жүйеге кіріңіз / Войдите в систему');
+                showToast('Жүйеге кіріңіз / Войдите в систему', 'warning');
                 return;
             }
 
@@ -289,7 +310,7 @@ function setupAuth() {
 async function login() {
     const email = $('#loginEmail').value.trim();
     const password = $('#loginPassword').value.trim();
-    if (!email || !password) { alert('Барлық өрістерді толтырыңыз'); return; }
+    if (!email || !password) { showToast('Барлық өрістерді толтырыңыз', 'warning'); return; }
 
     try {
         $('#loginBtn').disabled = true;
@@ -301,7 +322,7 @@ async function login() {
         else if (error.code === 'auth/wrong-password') msg = 'Құпия сөз дұрыс емес';
         else if (error.code === 'auth/invalid-email') msg = 'Email дұрыс емес';
         else if (error.code === 'auth/invalid-credential') msg = 'Email немесе құпия сөз дұрыс емес';
-        alert(msg);
+        showToast(msg, 'error');
     } finally {
         $('#loginBtn').disabled = false;
         $('#loginBtn').textContent = 'Войти';
@@ -313,8 +334,8 @@ async function register() {
     const email = $('#regEmail').value.trim();
     const password = $('#regPassword').value.trim();
     const cls = $('#regClass').value;
-    if (!name || !email || !password || !cls) { alert('Барлық өрістерді толтырыңыз'); return; }
-    if (password.length < 6) { alert('Құпия сөз кемінде 6 таңба болуы керек'); return; }
+    if (!name || !email || !password || !cls) { showToast('Барлық өрістерді толтырыңыз', 'warning'); return; }
+    if (password.length < 6) { showToast('Құпия сөз кемінде 6 таңба болуы керек', 'warning'); return; }
 
     try {
         $('#regSubmit').disabled = true;
@@ -332,13 +353,13 @@ async function register() {
         await cred.user.updateProfile({ displayName: name });
 
         $('#registerModal').classList.remove('active');
-        alert('Тіркелу сәтті! Қош келдіңіз!');
+        showToast('Тіркелу сәтті! Қош келдіңіз!', 'success');
     } catch (error) {
         let msg = 'Тіркелу қатесі';
         if (error.code === 'auth/email-already-in-use') msg = 'Бұл email тіркелген';
         else if (error.code === 'auth/weak-password') msg = 'Құпия сөз тым қарапайым';
         else if (error.code === 'auth/invalid-email') msg = 'Email дұрыс емес';
-        alert(msg);
+        showToast(msg, 'error');
     } finally {
         $('#regSubmit').disabled = false;
         $('#regSubmit').textContent = 'Тіркелу';
@@ -353,12 +374,12 @@ async function logout() {
 
 async function forgotPassword() {
     const email = $('#loginEmail').value.trim();
-    if (!email) { alert('Email өрісін толтырыңыз'); return; }
+    if (!email) { showToast('Email өрісін толтырыңыз', 'warning'); return; }
     try {
         await auth.sendPasswordResetEmail(email);
-        alert('Құпия сөзді қалпына келтіру сілтемесі жіберілді: ' + email);
+        showToast('Құпия сөзді қалпына келтіру сілтемесі жіберілді: ' + email, 'success');
     } catch (error) {
-        alert('Қате: ' + (error.code === 'auth/user-not-found' ? 'Пайдаланушы табылмады' : error.message));
+        showToast('Қате: ' + (error.code === 'auth/user-not-found' ? 'Пайдаланушы табылмады' : error.message), 'error');
     }
 }
 
@@ -366,30 +387,35 @@ async function forgotPassword() {
 async function loadUserData() {
     if (!currentUser) return;
 
-    const userDoc = await db.collection('users').doc(currentUser.uid).get();
-    if (userDoc.exists) {
-        currentUserData = userDoc.data();
-    } else {
-        currentUserData = {
-            name: currentUser.displayName || currentUser.email.split('@')[0],
-            email: currentUser.email,
-            role: 'student'
-        };
-        await db.collection('users').doc(currentUser.uid).set({
-            ...currentUserData,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    try {
+        const userDoc = await db.collection('users').doc(currentUser.uid).get();
+        if (userDoc.exists) {
+            currentUserData = userDoc.data();
+        } else {
+            currentUserData = {
+                name: currentUser.displayName || currentUser.email.split('@')[0],
+                email: currentUser.email,
+                role: 'student'
+            };
+            await db.collection('users').doc(currentUser.uid).set({
+                ...currentUserData,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+
+        const resultsSnap = await db.collection('users').doc(currentUser.uid)
+            .collection('results').orderBy('createdAt', 'desc').get();
+        testResults = resultsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        testAttempts = {};
+        testResults.forEach(r => {
+            if (!testAttempts[r.testId]) testAttempts[r.testId] = [];
+            testAttempts[r.testId].push({ score: r.score, date: r.date });
         });
+    } catch (error) {
+        console.error('Error loading user data:', error);
+        showToast('Деректерді жүктеу қатесі', 'error');
     }
-
-    const resultsSnap = await db.collection('users').doc(currentUser.uid)
-        .collection('results').orderBy('createdAt', 'desc').get();
-    testResults = resultsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-    testAttempts = {};
-    testResults.forEach(r => {
-        if (!testAttempts[r.testId]) testAttempts[r.testId] = [];
-        testAttempts[r.testId].push({ score: r.score, date: r.date });
-    });
 }
 
 function updateUIForUser() {
@@ -475,13 +501,13 @@ function setupTests() {
         if (currentTest) showTestAnalysis(currentTest.id);
     });
     $('#showDetailAnalysis')?.addEventListener('click', () => {
-        alert('Тапсырмалар бойынша толық талдау әзірленуде');
+        showToast('Тапсырмалар бойынша толық талдау әзірленуде', 'info');
     });
 }
 
 // ==================== START TEST ====================
 window.startTest = function(testId) {
-    if (!currentUser) { alert('Жүйеге кіріңіз'); return; }
+    if (!currentUser) { showToast('Жүйеге кіріңіз', 'warning'); return; }
 
     const testInfo = testsList.find(t => t.id === testId);
     if (!testInfo) return;
@@ -743,7 +769,7 @@ function setupAdmin() {
             const correct = parseInt(document.querySelector('input[name="adminCorrectAns"]:checked').value);
 
             if (!q || answers.some(a => !a)) {
-                alert('Барлық өрістерді толтырыңыз');
+                showToast('Барлық өрістерді толтырыңыз', 'warning');
                 return;
             }
 
@@ -760,7 +786,7 @@ function setupAdmin() {
                 loadAdminDashboard();
             } catch (e) {
                 console.error('Error saving question:', e);
-                alert('Сақтау қатесі: ' + e.message);
+                showToast('Сақтау қатесі: ' + e.message, 'error');
             }
         });
     }
@@ -793,9 +819,9 @@ function setupAdmin() {
                     siteTitle: $('#adminSettingSiteTitle').value,
                     homeText: $('#adminSettingHomeText').value
                 });
-                alert('Баптаулар сақталды!');
+                showToast('Баптаулар сақталды!', 'success');
             } catch (e) {
-                alert('Қате: ' + e.message);
+                showToast('Қате: ' + e.message, 'error');
             }
         });
     }
@@ -810,16 +836,16 @@ function setupAdmin() {
             try {
                 const snap = await db.collection('users').where('email', '==', email).get();
                 if (snap.empty) {
-                    alert('Пайдаланушы табылмады: ' + email);
+                    showToast('Пайдаланушы табылмады: ' + email, 'error');
                     return;
                 }
                 const userDoc = snap.docs[0];
                 await db.collection('users').doc(userDoc.id).update({ role: 'admin' });
-                alert(email + ' — админ рөлі берілді!');
+                showToast(email + ' — админ рөлі берілді!', 'success');
                 $('#adminGrantAdminEmail').value = '';
                 loadAdminUsers();
             } catch (e) {
-                alert('Қате: ' + e.message);
+                showToast('Қате: ' + e.message, 'error');
             }
         });
     }
@@ -933,7 +959,7 @@ window.adminToggleRole = async function(userId, currentRole) {
         await db.collection('users').doc(userId).update({ role: newRole });
         loadAdminUsers();
     } catch (e) {
-        alert('Қате: ' + e.message);
+        showToast('Қате: ' + e.message, 'error');
     }
 };
 
@@ -997,6 +1023,6 @@ window.adminDeleteQuestion = async function(id) {
         loadAdminQuestions();
         loadAdminDashboard();
     } catch (e) {
-        alert('Қате: ' + e.message);
+        showToast('Қате: ' + e.message, 'error');
     }
 };
