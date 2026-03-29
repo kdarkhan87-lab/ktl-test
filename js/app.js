@@ -215,17 +215,34 @@ function animateCounters() {
 
 // ==================== NAVIGATION ====================
 function setupNavigation() {
-    $$('.sidebar-menu > li').forEach(li => {
-        li.addEventListener('click', e => {
+    // Use event delegation on sidebar for reliable click handling
+    const sidebar = $('#sidebar');
+    sidebar.addEventListener('click', e => {
+        // Handle submenu item clicks first (deeper match)
+        const submenuLi = e.target.closest('.submenu li');
+        if (submenuLi) {
+            e.preventDefault();
+            e.stopPropagation();
+            const page = submenuLi.dataset.page;
+            if (!page) return;
+            if (!currentUser) { alert('Жүйеге кіріңіз'); return; }
+            showPage(page);
+            sidebar.classList.remove('open');
+            return;
+        }
+
+        // Handle top-level menu item clicks
+        const topLi = e.target.closest('.sidebar-menu > li');
+        if (topLi) {
             e.preventDefault();
             e.stopPropagation();
 
-            if (li.classList.contains('has-submenu')) {
-                li.classList.toggle('open');
+            if (topLi.classList.contains('has-submenu')) {
+                topLi.classList.toggle('open');
                 return;
             }
 
-            const page = li.dataset.page;
+            const page = topLi.dataset.page;
             if (!page) return;
 
             if (page !== 'home' && !currentUser) {
@@ -234,21 +251,9 @@ function setupNavigation() {
             }
 
             showPage(page);
-            setActiveMenu(li);
-            $('#sidebar').classList.remove('open');
-        });
-    });
-
-    $$('.submenu li').forEach(li => {
-        li.addEventListener('click', e => {
-            e.preventDefault();
-            e.stopPropagation();
-            const page = li.dataset.page;
-            if (!page) return;
-            if (!currentUser) { alert('Жүйеге кіріңіз'); return; }
-            showPage(page);
-            $('#sidebar').classList.remove('open');
-        });
+            setActiveMenu(topLi);
+            sidebar.classList.remove('open');
+        }
     });
 
     $('#menuToggle').addEventListener('click', () => $('#sidebar').classList.toggle('open'));
