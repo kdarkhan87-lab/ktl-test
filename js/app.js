@@ -1,6 +1,6 @@
 // ==================== FIREBASE CONFIG ====================
 const firebaseConfig = {
-    apiKey: "AIzaSyDrDeyqvosOfAZd51Me810p-s24jYPRE9M",
+    apiKey: "AIzaSyDrDeyqvosOfAZd51Me81Op-s24jYPRE9M",
     authDomain: "ktl-test-3ead6.firebaseapp.com",
     projectId: "ktl-test-3ead6",
     storageBucket: "ktl-test-3ead6.firebasestorage.app",
