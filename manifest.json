@@ -1,0 +1,24 @@
+{
+    "name": "KTL Test — Подготовка к КТЛ/БИЛ/НИШ",
+    "short_name": "KTL Test",
+    "description": "Система тестирования для подготовки к вступительным экзаменам КТЛ, БИЛ, НИШ",
+    "start_url": "/KTL-Test/",
+    "display": "standalone",
+    "background_color": "#1a1a2e",
+    "theme_color": "#2ecc71",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ],
+    "lang": "ru",
+    "categories": ["education"]
+}

@@ -7,6 +7,11 @@
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2ecc71">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
     <style>
         /* ==================== ADMIN PANEL STYLES ==================== */
         .admin-page-wrap {
@@ -224,10 +229,24 @@
                 <a href="#"><i class="fas fa-home"></i> <span>Бас бет</span></a>
             </li>
             <li data-page="tests" class="has-submenu">
-                <a href="#"><i class="fas fa-list-check"></i> <span>Система тестирования</span> <i class="fas fa-chevron-right submenu-arrow"></i></a>
+                <a href="#"><i class="fas fa-list-check"></i> <span data-i18n="menu_tests">Тесттер</span> <i class="fas fa-chevron-right submenu-arrow"></i></a>
                 <ul class="submenu">
-                    <li data-page="tests"><a href="#">Қолжетімді тесттер</a></li>
-                    <li data-page="results"><a href="#">Менің нәтижелерім</a></li>
+                    <li data-page="tests"><a href="#" data-i18n="menu_available">Қолжетімді тесттер</a></li>
+                    <li data-page="bil-exam"><a href="#" data-i18n="menu_bil">Пробный экзамен БИЛ</a></li>
+                    <li data-page="results"><a href="#" data-i18n="menu_results">Менің нәтижелерім</a></li>
+                </ul>
+            </li>
+            <li data-page="stats">
+                <a href="#"><i class="fas fa-chart-line"></i> <span data-i18n="menu_stats">Статистика</span></a>
+            </li>
+            <li data-page="leaderboard">
+                <a href="#"><i class="fas fa-trophy"></i> <span data-i18n="menu_leaderboard">Рейтинг</span></a>
+            </li>
+            <li data-page="theory" class="has-submenu">
+                <a href="#"><i class="fas fa-book-open"></i> <span data-i18n="menu_theory">Теория</span> <i class="fas fa-chevron-right submenu-arrow"></i></a>
+                <ul class="submenu">
+                    <li data-page="theory-math"><a href="#">Математика</a></li>
+                    <li data-page="theory-logic"><a href="#">Логика</a></li>
                 </ul>
             </li>
         </ul>
@@ -241,6 +260,11 @@
                     <li data-page="admin-questions"><a href="#">Сұрақтар</a></li>
                     <li data-page="admin-settings"><a href="#">Баптаулар</a></li>
                 </ul>
+            </li>
+        </ul>
+        <ul class="sidebar-menu" style="padding-top:0;">
+            <li data-page="subscription">
+                <a href="#"><i class="fas fa-gem" style="color:#f1c40f;"></i> <span>Premium</span></a>
             </li>
         </ul>
         <div class="sidebar-footer">
@@ -336,7 +360,25 @@
                         <div class="user-icon"><i class="fas fa-user-graduate"></i></div>
                         <h3 id="welcomeName">Добро пожаловать!</h3>
                         <p class="user-email" id="welcomeEmail"></p>
+                        <div class="user-tier" id="userTier"></div>
                     </div>
+                    <!-- Gamification: Streak & Level -->
+                    <div class="gamification-bar" id="gamificationBar">
+                        <div class="streak-display">
+                            <i class="fas fa-fire" style="color:#f39c12;"></i>
+                            <span id="userStreak">0</span> күн қатарынан
+                        </div>
+                        <div class="level-display">
+                            <i class="fas fa-star" style="color:#f1c40f;"></i>
+                            <span id="userLevel">Жаңадан бастаушы</span>
+                        </div>
+                        <div class="xp-bar-wrap">
+                            <div class="xp-bar" id="userXpBar" style="width:0%"></div>
+                        </div>
+                        <small id="userXpText" style="color:#95a5a6;">0 / 100 XP</small>
+                    </div>
+                    <!-- Badges -->
+                    <div class="badges-row" id="userBadges"></div>
                     <div class="user-stats">
                         <div class="user-stat">
                             <span class="user-stat-num" id="userTests">0</span>
@@ -647,6 +689,165 @@
             </div>
         </div>
 
+        <!-- ============ TEST REVIEW PAGE (Разбор ошибок) ============ -->
+        <div class="page" id="page-review">
+            <h2 class="page-title" data-i18n="review_title">Тест нәтижесін талдау</h2>
+            <div class="review-summary" id="reviewSummary"></div>
+            <div id="reviewContainer"></div>
+            <div style="text-align:center; margin-top:20px;">
+                <button class="btn btn-primary" onclick="showPage('tests')">Тесттерге оралу</button>
+            </div>
+        </div>
+
+        <!-- ============ STATISTICS PAGE ============ -->
+        <div class="page" id="page-stats">
+            <h2 class="page-title" data-i18n="stats_title">Менің статистикам</h2>
+            <div class="stats-overview" id="statsOverview">
+                <div class="stats-card-grid">
+                    <div class="stats-mini-card">
+                        <div class="stats-mini-icon"><i class="fas fa-clipboard-check"></i></div>
+                        <div class="stats-mini-num" id="statTotalTests">0</div>
+                        <div class="stats-mini-label">Тесттер саны</div>
+                    </div>
+                    <div class="stats-mini-card">
+                        <div class="stats-mini-icon"><i class="fas fa-percentage"></i></div>
+                        <div class="stats-mini-num" id="statAvgScore">0%</div>
+                        <div class="stats-mini-label">Орташа балл</div>
+                    </div>
+                    <div class="stats-mini-card">
+                        <div class="stats-mini-icon"><i class="fas fa-fire"></i></div>
+                        <div class="stats-mini-num" id="statStreak">0</div>
+                        <div class="stats-mini-label">Серия (күн)</div>
+                    </div>
+                    <div class="stats-mini-card">
+                        <div class="stats-mini-icon"><i class="fas fa-star"></i></div>
+                        <div class="stats-mini-num" id="statXP">0</div>
+                        <div class="stats-mini-label">Жалпы XP</div>
+                    </div>
+                </div>
+            </div>
+            <div class="stats-section">
+                <h3>Категория бойынша нәтижелер</h3>
+                <div id="statsCategoryBars"></div>
+            </div>
+            <div class="stats-section">
+                <h3>Соңғы 10 тест прогрессі</h3>
+                <div class="progress-chart" id="statsProgressChart"></div>
+            </div>
+            <div class="stats-section">
+                <h3>Әлсіз тақырыптар</h3>
+                <div id="statsWeakTopics"></div>
+            </div>
+        </div>
+
+        <!-- ============ LEADERBOARD PAGE ============ -->
+        <div class="page" id="page-leaderboard">
+            <h2 class="page-title" data-i18n="lb_title">🏆 Рейтинг</h2>
+            <div class="lb-tabs">
+                <button class="lb-tab active" data-period="all">Барлығы</button>
+                <button class="lb-tab" data-period="month">Осы ай</button>
+                <button class="lb-tab" data-period="week">Осы апта</button>
+            </div>
+            <div class="lb-table-wrap">
+                <table class="lb-table">
+                    <thead>
+                        <tr><th>#</th><th>Оқушы</th><th>Тесттер</th><th>Орташа %</th><th>XP</th><th>Деңгей</th></tr>
+                    </thead>
+                    <tbody id="leaderboardBody">
+                        <tr><td colspan="6" style="text-align:center;color:#999;">Жүктелуде...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ============ BIL EXAM PAGE ============ -->
+        <div class="page" id="page-bil-exam">
+            <h2 class="page-title">🎓 Пробный экзамен БІЛ (КТЛ)</h2>
+            <div class="bil-info-cards">
+                <div class="bil-card">
+                    <h3>1-этап: Негізгі тест</h3>
+                    <ul>
+                        <li>📐 Математика + Логика: 40 сұрақ</li>
+                        <li>🇰🇿 Қазақ тілі: 10 сұрақ</li>
+                        <li>📜 Қазақстан тарихы: 10 сұрақ</li>
+                        <li>⏱ Уақыт: 100 минут</li>
+                        <li>📊 Максималды балл: 240</li>
+                    </ul>
+                    <button class="btn btn-primary bil-start-btn" onclick="startBilExam(1)" id="bilExam1Btn">1-этап бастау</button>
+                </div>
+                <div class="bil-card">
+                    <h3>2-этап: Күрделі тест</h3>
+                    <ul>
+                        <li>📐 Математика + Логика: 55 сұрақ</li>
+                        <li>🇰🇿 Қазақ тілі: 10 сұрақ</li>
+                        <li>📜 Қазақстан тарихы: 10 сұрақ</li>
+                        <li>⏱ Уақыт: 130 минут</li>
+                        <li>📊 Максималды балл: 300</li>
+                    </ul>
+                    <button class="btn btn-primary bil-start-btn" onclick="startBilExam(2)" id="bilExam2Btn">2-этап бастау</button>
+                </div>
+            </div>
+            <div class="bil-note">
+                <p><strong>Ескерту:</strong> Бұл симуляция нақты емтиханның форматына сәйкес құрылған.
+                Нәтиже 240/300 балдық жүйемен есептеледі.</p>
+            </div>
+        </div>
+
+        <!-- ============ THEORY PAGES ============ -->
+        <div class="page" id="page-theory-math">
+            <h2 class="page-title">📚 Математика — Теория</h2>
+            <div class="theory-sections" id="theoryMathContent"></div>
+        </div>
+        <div class="page" id="page-theory-logic">
+            <h2 class="page-title">🧠 Логика — Теория</h2>
+            <div class="theory-sections" id="theoryLogicContent"></div>
+        </div>
+
+        <!-- ============ SUBSCRIPTION PAGE ============ -->
+        <div class="page" id="page-subscription">
+            <h2 class="page-title">💎 Жазылым тарифтері</h2>
+            <div class="sub-cards">
+                <div class="sub-card sub-free">
+                    <h3>Free</h3>
+                    <div class="sub-price">0 ₸</div>
+                    <ul>
+                        <li>✅ Күніне 3 тест</li>
+                        <li>✅ Негізгі статистика</li>
+                        <li>✅ Рейтинг</li>
+                        <li>❌ Толық разбор ошибок</li>
+                        <li>❌ Конспекттер</li>
+                        <li>❌ Пробный экзамен БІЛ</li>
+                    </ul>
+                    <button class="btn btn-outline" disabled>Ағымдағы</button>
+                </div>
+                <div class="sub-card sub-premium">
+                    <div class="sub-badge">Танымал</div>
+                    <h3>Premium</h3>
+                    <div class="sub-price">2 990 ₸<span>/ай</span></div>
+                    <ul>
+                        <li>✅ Шексіз тесттер</li>
+                        <li>✅ Толық статистика</li>
+                        <li>✅ Қателерді талдау</li>
+                        <li>✅ Конспекттер мен теория</li>
+                        <li>✅ Пробный экзамен БІЛ</li>
+                        <li>✅ Бейджлер мен жетістіктер</li>
+                    </ul>
+                    <button class="btn btn-primary" onclick="showToast('Kaspi арқылы төлем жақында қосылады','info')">Жазылу</button>
+                </div>
+                <div class="sub-card sub-annual">
+                    <h3>Жылдық</h3>
+                    <div class="sub-price">24 990 ₸<span>/жыл</span></div>
+                    <div class="sub-save">30% үнемдеу!</div>
+                    <ul>
+                        <li>✅ Premium мүмкіндіктері</li>
+                        <li>✅ Жылдық скидка</li>
+                        <li>✅ Приоритетті қолдау</li>
+                    </ul>
+                    <button class="btn btn-primary" onclick="showToast('Kaspi арқылы төлем жақында қосылады','info')">Жазылу</button>
+                </div>
+            </div>
+        </div>
+
         <!-- ============ ADMIN QUESTION MODAL ============ -->
         <div id="adminQuestionModal">
             <div class="admin-modal-inner">
@@ -696,6 +897,7 @@
                     <p>Балл: <strong id="resultScore">0</strong></p>
                 </div>
                 <button class="btn btn-primary" id="closeResult">Жабу</button>
+                <button class="btn btn-purple" id="showReview">📋 Қателерді талдау</button>
                 <button class="btn btn-outline" id="showAnalysis">Анализ</button>
             </div>
         </div>

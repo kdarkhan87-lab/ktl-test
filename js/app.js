@@ -312,6 +312,13 @@ document.addEventListener('DOMContentLoaded', () => {
     setupTests();
     setupScrollTop();
     setupAdmin();
+    registerServiceWorker();
+    renderTheoryPage('math');
+    renderTheoryPage('logic');
+
+    // Restore language
+    const savedLang = localStorage.getItem('ktl_lang') || 'kz';
+    setLanguage(savedLang);
 
     auth.onAuthStateChanged(async user => {
         if (user) {
@@ -395,6 +402,12 @@ function showPage(page) {
     const el = $(`#page-${page}`);
     if (el) el.classList.add('active');
     window.scrollTo(0, 0);
+
+    // Trigger page-specific actions
+    if (page === 'stats') renderStatsPage();
+    if (page === 'leaderboard') loadLeaderboard('all');
+    if (page === 'theory-math') renderTheoryPage('math');
+    if (page === 'theory-logic') renderTheoryPage('logic');
 }
 
 function setActiveMenu(li) {
@@ -545,6 +558,9 @@ function updateUIForUser() {
 
         updateResultsTable();
         renderTestsList();
+        updateGamificationUI();
+        renderStatsPage();
+        loadLeaderboard('all');
 
         // Admin menu visibility
         const adminMenu = $('#adminMenu');
@@ -614,11 +630,36 @@ function setupTests() {
     $('#showDetailAnalysis')?.addEventListener('click', () => {
         showToast('Тапсырмалар бойынша толық талдау әзірленуде', 'info');
     });
+
+    // Review button
+    $('#showReview')?.addEventListener('click', () => {
+        $('#resultModal').classList.remove('active');
+        renderReview();
+        showPage('review');
+    });
+
+    // Leaderboard tabs
+    document.querySelectorAll('.lb-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            loadLeaderboard(tab.dataset.period);
+        });
+    });
+
+    // Language switchers
+    $$('.lang-btn').forEach(btn => {
+        btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+    });
+    $$('.lang-label').forEach(lbl => {
+        lbl.addEventListener('click', () => setLanguage(lbl.dataset.lang));
+    });
 }
 
 // ==================== START TEST ====================
 window.startTest = async function(testId) {
     if (!currentUser) { showToast('Жүйеге кіріңіз', 'warning'); return; }
+    if (!checkDailyLimit()) return;
 
     const testInfo = testsList.find(t => t.id === testId);
     if (!testInfo) return;
@@ -788,8 +829,19 @@ async function finishTest() {
         $('#userAvg').textContent = Math.round(avg) + '%';
     }
 
+    // Store review data for Feature 1
+    lastTestReview = {
+        questions: [...currentQuestions],
+        answers: [...userAnswers],
+        testInfo: currentTest,
+        correct,
+        total,
+        percent
+    };
+
     updateResultsTable();
     renderTestsList();
+    updateGamificationUI();
 }
 
 function updateResultsTable() {
@@ -1390,6 +1442,561 @@ async function importHardcodedData() {
         if (statusEl) statusEl.textContent = '❌ Қате: ' + e.message;
         showToast('Импорт қатесі: ' + e.message, 'error');
     }
+}
+
+// ==================== FEATURE 1: TEST REVIEW (Разбор ошибок) ====================
+let lastTestReview = null; // stores {questions, userAnswers, testInfo}
+
+function renderReview() {
+    if (!lastTestReview) return;
+    const { questions, answers, testInfo, correct: correctCount, total, percent } = lastTestReview;
+    const letters = ['A', 'B', 'C', 'D', 'E'];
+
+    const scoreClass = percent >= 80 ? 'good' : percent >= 50 ? 'medium' : 'bad';
+    $('#reviewSummary').innerHTML = `
+        <div class="review-score ${scoreClass}">${percent}%</div>
+        <p style="font-size:16px; color:#555; margin-top:8px;">${testInfo.name}</p>
+        <p style="color:#999;">Дұрыс: ${correctCount}/${total} | Қате: ${total - correctCount - answers.filter(a => a === -1).length} | Жауапсыз: ${answers.filter(a => a === -1).length}</p>
+    `;
+
+    $('#reviewContainer').innerHTML = questions.map((q, i) => {
+        const userAns = answers[i];
+        const isCorrect = userAns === q.correct;
+        const isSkipped = userAns === -1;
+        const statusClass = isSkipped ? 'skipped' : isCorrect ? 'correct' : 'incorrect';
+        const statusText = isSkipped ? 'Жауапсыз' : isCorrect ? 'Дұрыс ✓' : 'Қате ✗';
+        const statusBadge = isSkipped ? 's-skipped' : isCorrect ? 's-correct' : 's-incorrect';
+
+        const answersHtml = q.a.map((ans, ai) => {
+            let cls = 'ans-neutral';
+            let icon = '';
+            if (ai === q.correct) {
+                cls = 'ans-correct';
+                icon = '<i class="fas fa-check-circle"></i>';
+            }
+            if (ai === userAns && !isCorrect && !isSkipped) {
+                cls = 'ans-wrong-selected';
+                icon = '<i class="fas fa-times-circle"></i>';
+            }
+            return `<div class="review-ans ${cls}">${icon} <strong>${letters[ai]}.</strong> ${ans}</div>`;
+        }).join('');
+
+        return `<div class="review-item ${statusClass}">
+            <div class="review-q-header">
+                <span class="review-q-num">Тапсырма №${i + 1}</span>
+                <span class="review-q-status ${statusBadge}">${statusText}</span>
+            </div>
+            <div class="review-q-text">${q.q}</div>
+            <div class="review-answers">${answersHtml}</div>
+            ${!isCorrect && !isSkipped ? `<p style="margin-top:8px; font-size:12px; color:#27ae60;"><i class="fas fa-lightbulb"></i> Дұрыс жауап: <strong>${letters[q.correct]}. ${q.a[q.correct]}</strong></p>` : ''}
+        </div>`;
+    }).join('');
+}
+
+// ==================== FEATURE 2: STATISTICS & PROGRESS ====================
+function renderStatsPage() {
+    if (!testResults || testResults.length === 0) {
+        $('#statTotalTests').textContent = '0';
+        $('#statAvgScore').textContent = '0%';
+        $('#statStreak').textContent = '0';
+        $('#statXP').textContent = '0';
+        $('#statsCategoryBars').innerHTML = '<p style="color:#999;">Тест тапсырыңыз</p>';
+        $('#statsProgressChart').innerHTML = '<p style="color:#999;">Деректер жоқ</p>';
+        $('#statsWeakTopics').innerHTML = '<p style="color:#999;">Деректер жоқ</p>';
+        return;
+    }
+
+    const totalTests = testResults.length;
+    const avgScore = Math.round(testResults.reduce((s, r) => s + (r.percent || 0), 0) / totalTests);
+    const gamData = getGamificationData();
+
+    $('#statTotalTests').textContent = totalTests;
+    $('#statAvgScore').textContent = avgScore + '%';
+    $('#statStreak').textContent = gamData.streak;
+    $('#statXP').textContent = gamData.xp;
+
+    // Category breakdown
+    const catStats = {};
+    testResults.forEach(r => {
+        const t = testsList.find(tt => tt.id === r.testId || tt.name === r.test);
+        const cat = t ? t.category : 'other';
+        if (!catStats[cat]) catStats[cat] = { total: 0, sum: 0 };
+        catStats[cat].total++;
+        catStats[cat].sum += r.percent || 0;
+    });
+
+    const catBarsHtml = Object.entries(catStats).map(([cat, data]) => {
+        const avg = Math.round(data.sum / data.total);
+        const color = avg >= 80 ? '#2ecc71' : avg >= 50 ? '#f39c12' : '#e74c3c';
+        return `<div class="cat-bar-item">
+            <div class="cat-bar-label"><span>${getCategoryName(cat)}</span><span>${avg}% (${data.total} тест)</span></div>
+            <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${Math.max(avg, 5)}%; background:${color};">${avg}%</div></div>
+        </div>`;
+    }).join('');
+    $('#statsCategoryBars').innerHTML = catBarsHtml || '<p style="color:#999;">Деректер жоқ</p>';
+
+    // Progress chart (last 10 tests)
+    const last10 = testResults.slice(-10);
+    const maxPct = 100;
+    const chartHtml = last10.map((r, i) => {
+        const h = Math.max((r.percent / maxPct) * 120, 8);
+        const color = r.percent >= 80 ? '#2ecc71' : r.percent >= 50 ? '#f39c12' : '#e74c3c';
+        return `<div class="progress-bar-col">
+            <div class="progress-bar-val">${r.percent}%</div>
+            <div class="progress-bar-fill" style="height:${h}px; background:${color};"></div>
+            <div class="progress-bar-label">${r.date || ''}</div>
+        </div>`;
+    }).join('');
+    $('#statsProgressChart').innerHTML = chartHtml || '<p style="color:#999;">Деректер жоқ</p>';
+
+    // Weak topics
+    const weakCats = Object.entries(catStats)
+        .map(([cat, d]) => ({ cat, avg: Math.round(d.sum / d.total) }))
+        .filter(c => c.avg < 70)
+        .sort((a, b) => a.avg - b.avg);
+
+    if (weakCats.length > 0) {
+        $('#statsWeakTopics').innerHTML = weakCats.map(c => {
+            const cls = c.avg < 40 ? 'weak-low' : 'weak-mid';
+            return `<div class="weak-topic-item">
+                <span>${getCategoryName(c.cat)}</span>
+                <span class="weak-badge ${cls}">${c.avg}%</span>
+            </div>`;
+        }).join('');
+    } else {
+        $('#statsWeakTopics').innerHTML = '<p style="color:#2ecc71; font-weight:600;">👏 Барлық тақырыптар жақсы деңгейде!</p>';
+    }
+}
+
+// ==================== FEATURE 3: LEADERBOARD ====================
+let leaderboardData = [];
+
+async function loadLeaderboard(period = 'all') {
+    const tbody = $('#leaderboardBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">Жүктелуде...</td></tr>';
+
+    try {
+        const usersSnap = await db.collection('users').get();
+        const board = [];
+
+        for (const userDoc of usersSnap.docs) {
+            const u = userDoc.data();
+            if (u.role === 'admin' || u.role === 'super-admin') continue;
+
+            const resultsSnap = await db.collection('users').doc(userDoc.id)
+                .collection('results').get();
+
+            let results = resultsSnap.docs.map(d => d.data());
+
+            // Period filter
+            if (period === 'month' || period === 'week') {
+                const now = new Date();
+                const cutoff = new Date();
+                if (period === 'month') cutoff.setMonth(now.getMonth() - 1);
+                else cutoff.setDate(now.getDate() - 7);
+
+                results = results.filter(r => {
+                    if (r.createdAt && r.createdAt.toDate) {
+                        return r.createdAt.toDate() >= cutoff;
+                    }
+                    return true;
+                });
+            }
+
+            if (results.length === 0) continue;
+
+            const avg = Math.round(results.reduce((s, r) => s + (r.percent || 0), 0) / results.length);
+            const xp = results.length * 10 + results.reduce((s, r) => s + Math.floor((r.percent || 0) / 10), 0);
+            const level = getLevel(xp);
+
+            board.push({
+                uid: userDoc.id,
+                name: u.name || u.email?.split('@')[0] || 'Белгісіз',
+                tests: results.length,
+                avg,
+                xp,
+                level: level.name
+            });
+        }
+
+        board.sort((a, b) => b.xp - a.xp);
+        leaderboardData = board;
+        renderLeaderboard(board);
+    } catch (e) {
+        console.error('Leaderboard error:', e);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#e74c3c;">Қате: ' + e.message + '</td></tr>';
+    }
+}
+
+function renderLeaderboard(board) {
+    const tbody = $('#leaderboardBody');
+    if (!tbody) return;
+
+    if (board.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">Деректер жоқ</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = board.slice(0, 50).map((u, i) => {
+        const rank = i + 1;
+        const rankClass = rank === 1 ? 'lb-rank-1' : rank === 2 ? 'lb-rank-2' : rank === 3 ? 'lb-rank-3' : '';
+        const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
+        const isMe = currentUser && u.uid === currentUser.uid;
+
+        return `<tr class="${isMe ? 'lb-me' : ''}">
+            <td class="lb-rank ${rankClass}">${medal}</td>
+            <td class="lb-name">${u.name}${isMe ? ' (сіз)' : ''}</td>
+            <td>${u.tests}</td>
+            <td>${u.avg}%</td>
+            <td>${u.xp}</td>
+            <td>${u.level}</td>
+        </tr>`;
+    }).join('');
+}
+
+// ==================== FEATURE 4: GAMIFICATION (Streak, Badges, XP) ====================
+const LEVELS = [
+    { min: 0, name: 'Жаңадан бастаушы', icon: '🌱' },
+    { min: 100, name: 'Оқушы', icon: '📖' },
+    { min: 300, name: 'Білімді', icon: '🎓' },
+    { min: 600, name: 'Шебер', icon: '⭐' },
+    { min: 1000, name: 'Маман', icon: '💎' },
+    { min: 2000, name: 'Чемпион', icon: '🏆' },
+    { min: 5000, name: 'Легенда', icon: '👑' }
+];
+
+const BADGES = [
+    { id: 'first_test', name: 'Бірінші тест', icon: '🎯', desc: '1 тест тапсыру', check: r => r.length >= 1 },
+    { id: 'ten_tests', name: '10 тест', icon: '🔟', desc: '10 тест тапсыру', check: r => r.length >= 10 },
+    { id: 'fifty_tests', name: '50 тест', icon: '5️⃣', desc: '50 тест тапсыру', check: r => r.length >= 50 },
+    { id: 'perfect', name: 'Мінсіз', icon: '💯', desc: '100% нәтиже алу', check: r => r.some(x => x.percent === 100) },
+    { id: 'streak3', name: '3 күн қатар', icon: '🔥', desc: '3 күн қатарынан оқу', check: (r, g) => g.streak >= 3 },
+    { id: 'streak7', name: '7 күн қатар', icon: '⚡', desc: '7 күн қатарынан оқу', check: (r, g) => g.streak >= 7 },
+    { id: 'streak30', name: '30 күн қатар', icon: '🌟', desc: '30 күн қатарынан оқу', check: (r, g) => g.streak >= 30 },
+    { id: 'speed', name: 'Жылдам', icon: '⏱️', desc: '5 минутта тест аяқтау', check: r => r.some(x => { const t = x.time?.split(':'); return t && parseInt(t[0]) < 5; }) },
+    { id: 'math_master', name: 'Мат мастер', icon: '🧮', desc: 'Математикадан 90%+', check: r => r.filter(x => x.test?.includes('Мат') || x.test?.includes('мат')).some(x => x.percent >= 90) },
+    { id: 'logic_master', name: 'Логик', icon: '🧠', desc: 'Логикадан 90%+', check: r => r.filter(x => x.test?.includes('Логика') || x.test?.includes('логика')).some(x => x.percent >= 90) },
+];
+
+function getLevel(xp) {
+    let level = LEVELS[0];
+    for (const l of LEVELS) {
+        if (xp >= l.min) level = l;
+    }
+    const nextIdx = LEVELS.indexOf(level) + 1;
+    const next = LEVELS[nextIdx] || null;
+    return { ...level, next, xpForNext: next ? next.min : level.min };
+}
+
+function getGamificationData() {
+    // Calculate XP
+    const xp = testResults.length * 10 + testResults.reduce((s, r) => s + Math.floor((r.percent || 0) / 10), 0);
+
+    // Calculate streak
+    let streak = 0;
+    if (testResults.length > 0) {
+        const dates = [...new Set(testResults.map(r => r.date))].sort().reverse();
+        const today = new Date().toLocaleDateString('ru-RU');
+        const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('ru-RU');
+
+        if (dates[0] === today || dates[0] === yesterday) {
+            streak = 1;
+            for (let i = 1; i < dates.length; i++) {
+                // Simple consecutive day check
+                const prev = parseRuDate(dates[i - 1]);
+                const curr = parseRuDate(dates[i]);
+                if (prev && curr) {
+                    const diff = (prev - curr) / 86400000;
+                    if (diff <= 1.5) streak++;
+                    else break;
+                }
+            }
+        }
+    }
+
+    return { xp, streak };
+}
+
+function parseRuDate(str) {
+    if (!str) return null;
+    const parts = str.split('.');
+    if (parts.length === 3) {
+        return new Date(parts[2], parts[1] - 1, parts[0]);
+    }
+    return null;
+}
+
+function updateGamificationUI() {
+    const gam = getGamificationData();
+    const level = getLevel(gam.xp);
+
+    const streakEl = $('#userStreak');
+    const levelEl = $('#userLevel');
+    const xpBar = $('#userXpBar');
+    const xpText = $('#userXpText');
+    const badgesEl = $('#userBadges');
+
+    if (streakEl) streakEl.textContent = gam.streak;
+    if (levelEl) levelEl.textContent = `${level.icon} ${level.name}`;
+
+    if (xpBar && level.next) {
+        const prevMin = level.min;
+        const nextMin = level.next.min;
+        const progress = Math.min(100, Math.round(((gam.xp - prevMin) / (nextMin - prevMin)) * 100));
+        xpBar.style.width = progress + '%';
+        if (xpText) xpText.textContent = `${gam.xp} / ${nextMin} XP`;
+    } else if (xpBar) {
+        xpBar.style.width = '100%';
+        if (xpText) xpText.textContent = `${gam.xp} XP — MAX!`;
+    }
+
+    // Badges
+    if (badgesEl) {
+        badgesEl.innerHTML = BADGES.map(b => {
+            const earned = b.check(testResults, gam);
+            return `<div class="badge-item ${earned ? 'earned' : 'locked'}" title="${b.desc}">
+                ${b.icon}
+                <div class="badge-tooltip">${b.name}: ${b.desc}</div>
+            </div>`;
+        }).join('');
+    }
+
+    // Subscription tier display
+    const tierEl = $('#userTier');
+    if (tierEl) {
+        const tier = currentUserData?.subscription || 'free';
+        if (tier === 'premium') {
+            tierEl.className = 'user-tier tier-premium';
+            tierEl.textContent = '💎 Premium';
+        } else {
+            tierEl.className = 'user-tier tier-free';
+            tierEl.textContent = 'Free';
+        }
+    }
+}
+
+// ==================== FEATURE 5: BIL EXAM MODE ====================
+window.startBilExam = async function(stage) {
+    if (!currentUser) { showToast('Жүйеге кіріңіз', 'warning'); return; }
+
+    // Check subscription (for now, allow all)
+    // if (currentUserData?.subscription !== 'premium') { showToast('Premium жазылым қажет', 'warning'); showPage('subscription'); return; }
+
+    const config = stage === 1
+        ? { name: 'БІЛ 1-этап пробный экзамен', mathQ: 40, time: 100, maxScore: 240 }
+        : { name: 'БІЛ 2-этап пробный экзамен', mathQ: 55, time: 130, maxScore: 300 };
+
+    // Load math + logic questions
+    let mathBank = [];
+    try {
+        const cats = ['math5', 'math6', 'math7', 'logic', 'ktl'];
+        for (const cat of cats) {
+            const snap = await db.collection('questions').where('category', '==', cat).get();
+            mathBank.push(...snap.docs.map(d => d.data()));
+        }
+    } catch (e) {
+        console.error('BIL exam load error:', e);
+    }
+
+    // Fallback
+    if (mathBank.length === 0) {
+        mathBank = [...(questionBank.math5 || []), ...(questionBank.math6 || []), ...(questionBank.math7 || []), ...(questionBank.logic || []), ...(questionBank.ktl || [])];
+    }
+
+    const totalQ = config.mathQ;
+    const bank = shuffleArray([...mathBank]).slice(0, totalQ);
+
+    if (bank.length < 10) {
+        showToast('Жеткілікті сұрақ жоқ. Деректерді импорттаңыз.', 'warning');
+        return;
+    }
+
+    currentTest = {
+        id: 'bil_exam_' + stage,
+        name: config.name,
+        category: 'bil',
+        questions: bank.length,
+        time: config.time,
+        topics: ['Математика', 'Логика'],
+        bilStage: stage,
+        maxScore: config.maxScore
+    };
+    currentQuestions = bank;
+    userAnswers = new Array(bank.length).fill(-1);
+    timeLeft = config.time * 60;
+    testStartTime = Date.now();
+
+    showPage('test-active');
+    $('#testTitle').textContent = config.name;
+    renderAllQuestions();
+    renderPageNav();
+    startTimer();
+};
+
+// ==================== FEATURE 6: i18n (Двуязычность) ====================
+const i18n = {
+    kz: {
+        menu_tests: 'Тесттер', menu_available: 'Қолжетімді тесттер', menu_bil: 'Пробный экзамен БІЛ',
+        menu_results: 'Менің нәтижелерім', menu_stats: 'Статистика', menu_leaderboard: 'Рейтинг',
+        menu_theory: 'Теория', review_title: 'Тест нәтижесін талдау', stats_title: 'Менің статистикам',
+        lb_title: '🏆 Рейтинг', login_btn: 'Кіру', register_btn: 'Тіркелу', logout_btn: 'Шығу',
+        start_test: 'Тестті бастау', finish_test: 'Тестті аяқтау', close: 'Жабу',
+        tests_taken: 'Тесттер саны', avg_score: 'Орташа балл'
+    },
+    ru: {
+        menu_tests: 'Тесты', menu_available: 'Доступные тесты', menu_bil: 'Пробный экзамен БИЛ',
+        menu_results: 'Мои результаты', menu_stats: 'Статистика', menu_leaderboard: 'Рейтинг',
+        menu_theory: 'Теория', review_title: 'Разбор ошибок теста', stats_title: 'Моя статистика',
+        lb_title: '🏆 Рейтинг', login_btn: 'Войти', register_btn: 'Регистрация', logout_btn: 'Выйти',
+        start_test: 'Начать тест', finish_test: 'Завершить тест', close: 'Закрыть',
+        tests_taken: 'Тестов сдано', avg_score: 'Средний балл'
+    }
+};
+
+let currentLang = 'kz';
+
+function setLanguage(lang) {
+    currentLang = lang;
+    localStorage.setItem('ktl_lang', lang);
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.dataset.i18n;
+        if (i18n[lang] && i18n[lang][key]) {
+            el.textContent = i18n[lang][key];
+        }
+    });
+    // Update lang buttons
+    $$('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+    $$('.lang-label').forEach(l => l.classList.toggle('active', l.dataset.lang === lang));
+}
+
+// ==================== FEATURE 7: THEORY CONTENT ====================
+const theoryContent = {
+    math: [
+        {
+            title: '📐 Арифметика негіздері',
+            body: `<p><strong>Натурал сандар</strong> — бұл 1, 2, 3, 4, ... сандар тізбегі.</p>
+            <div class="theory-formula">a + b = b + a (ауыстырымдылық қасиеті)</div>
+            <div class="theory-formula">(a + b) + c = a + (b + c) (терімділік қасиеті)</div>
+            <div class="theory-formula">a × (b + c) = a × b + a × c (үлестірімділік қасиеті)</div>
+            <p><strong>Бөлу ережелері:</strong></p>
+            <ul><li>Сандар қосындысы 3-ке бөлінсе → сан 3-ке бөлінеді</li>
+            <li>Соңғы сан жұп болса → 2-ге бөлінеді</li>
+            <li>Соңғы екі саны 4-ке бөлінсе → 4-ке бөлінеді</li>
+            <li>0 немесе 5-ке аяқталса → 5-ке бөлінеді</li></ul>`
+        },
+        {
+            title: '📊 Бөлшектер (дроби)',
+            body: `<p><strong>Бөлшектерді қосу/азайту:</strong></p>
+            <div class="theory-formula">a/b + c/d = (a×d + c×b) / (b×d)</div>
+            <div class="theory-formula">a/b × c/d = (a×c) / (b×d)</div>
+            <div class="theory-formula">a/b ÷ c/d = (a×d) / (b×c)</div>
+            <p><strong>Ондық бөлшек → жай бөлшек:</strong> 0.75 = 75/100 = 3/4</p>
+            <p><strong>Жай бөлшек → ондық бөлшек:</strong> 3/4 = 3 ÷ 4 = 0.75</p>`
+        },
+        {
+            title: '📏 Пайыздар (проценты)',
+            body: `<div class="theory-formula">Пайыз = (Бөлік / Бүтін) × 100%</div>
+            <div class="theory-formula">Бөлік = Бүтін × Пайыз / 100</div>
+            <p><strong>Мысал:</strong> 240-тың 25%-ы = 240 × 25/100 = 60</p>
+            <p><strong>Кері есеп:</strong> 60 — бұл қандай санның 25%-ы? → 60 × 100/25 = 240</p>`
+        },
+        {
+            title: '📐 Геометрия негіздері',
+            body: `<div class="theory-formula">P(тікбұрыш) = 2(a + b)</div>
+            <div class="theory-formula">S(тікбұрыш) = a × b</div>
+            <div class="theory-formula">S(үшбұрыш) = (a × h) / 2</div>
+            <div class="theory-formula">S(шеңбер) = π × r²</div>
+            <div class="theory-formula">C(шеңбер) = 2 × π × r</div>
+            <div class="theory-formula">V(куб) = a³</div>
+            <p>Үшбұрыштың бұрыштар қосындысы = 180°</p>`
+        },
+        {
+            title: '🔢 ЕҮОБ және ЕКОЕ (НОД и НОК)',
+            body: `<p><strong>ЕҮОБ (НОД)</strong> — ең үлкен ортақ бөлгіш</p>
+            <p><strong>ЕКОЕ (НОК)</strong> — ең кіші ортақ еселік</p>
+            <div class="theory-formula">ЕҮОБ(24, 36) = 12</div>
+            <div class="theory-formula">ЕКОЕ(6, 8) = 24</div>
+            <div class="theory-formula">a × b = ЕҮОБ(a,b) × ЕКОЕ(a,b)</div>`
+        },
+        {
+            title: '📈 Теңдеулер (уравнения)',
+            body: `<p><strong>Сызықтық теңдеу:</strong> ax + b = c → x = (c - b) / a</p>
+            <div class="theory-formula">2x + 5 = 11 → 2x = 6 → x = 3</div>
+            <p><strong>Пропорция:</strong> a/b = c/d → a×d = b×c</p>
+            <div class="theory-formula">3/x = 9/15 → 9x = 45 → x = 5</div>`
+        }
+    ],
+    logic: [
+        {
+            title: '🧩 Заңдылықтар (закономерности)',
+            body: `<p><strong>Арифметикалық прогрессия:</strong> Әрбір мүше алдыңғыдан бірдей санға өседі.</p>
+            <div class="theory-formula">2, 5, 8, 11, 14, ... (d = 3)</div>
+            <p><strong>Геометриялық прогрессия:</strong> Әрбір мүше алдыңғыға бірдей санға көбейтіледі.</p>
+            <div class="theory-formula">2, 6, 18, 54, 162, ... (q = 3)</div>
+            <p><strong>Фибоначчи:</strong> Әрбір сан алдыңғы екеуінің қосындысы.</p>
+            <div class="theory-formula">1, 1, 2, 3, 5, 8, 13, 21, ...</div>`
+        },
+        {
+            title: '🔄 Логикалық есептер',
+            body: `<p><strong>«Барлығы кроме» типтес есептер:</strong></p>
+            <p>«17 қой, барлығы кроме 9-ы қашып кетті» → Қалғаны = 9</p>
+            <p><strong>«Бір-бірімен ойнау» типтес есептер:</strong></p>
+            <div class="theory-formula">n команда, әрқайсысы бір-бірімен = n(n-1)/2 ойын</div>
+            <p>8 команда → 8×7/2 = 28 ойын</p>`
+        },
+        {
+            title: '📅 Күн және уақыт есептері',
+            body: `<p><strong>Аптаның күні:</strong> 7 күнде цикл қайталанады.</p>
+            <div class="theory-formula">100 күннен кейін: 100 mod 7 = 2 → 2 күн алға</div>
+            <p>Дүйсенбіден 100 күн кейін → Сәрсенбі (2 күн алға)</p>`
+        },
+        {
+            title: '🧮 Комбинаторика негіздері',
+            body: `<div class="theory-formula">n! = 1 × 2 × 3 × ... × n (факториал)</div>
+            <div class="theory-formula">4 адамды қатарға орналастыру: 4! = 24 тәсіл</div>
+            <p><strong>Диагональдар:</strong></p>
+            <div class="theory-formula">n-бұрышты фигурадағы диагональдар = n(n-3)/2</div>
+            <p>10-бұрыш → 10×7/2 = 35 диагональ</p>`
+        }
+    ]
+};
+
+function renderTheoryPage(type) {
+    const container = type === 'math' ? $('#theoryMathContent') : $('#theoryLogicContent');
+    if (!container) return;
+    const content = theoryContent[type] || [];
+
+    container.innerHTML = content.map((item, i) => `
+        <div class="theory-card" onclick="this.classList.toggle('open')">
+            <h4>${item.title} <i class="fas fa-chevron-down" style="float:right;color:#bdc3c7;font-size:12px;"></i></h4>
+            <div class="theory-card-body">${item.body}</div>
+        </div>
+    `).join('');
+}
+
+// ==================== FEATURE 8: PWA ====================
+function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('SW registered:', reg.scope))
+            .catch(err => console.log('SW registration failed:', err));
+    }
+}
+
+// ==================== FEATURE 9: SUBSCRIPTION TIER ====================
+function checkDailyLimit() {
+    const tier = currentUserData?.subscription || 'free';
+    if (tier === 'premium') return true;
+
+    const today = new Date().toLocaleDateString('ru-RU');
+    const todayTests = testResults.filter(r => r.date === today).length;
+    if (todayTests >= 3) {
+        showToast('Күндік лимит (3 тест) аяқталды. Premium жазылыңыз!', 'warning');
+        showPage('subscription');
+        return false;
+    }
+    return true;
 }
 
 // ==================== LOAD TESTS FROM FIRESTORE ====================
