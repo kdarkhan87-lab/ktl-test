@@ -2178,8 +2178,21 @@ function renderLearnPage(grade) {
     if (!grid) return;
     const modules = getModulesByGrade(grade || '5');
     const progress = currentUserData?.learningProgress || {};
+    const diag = currentUserData?.diagnosticResult;
 
-    grid.innerHTML = modules.map(mod => {
+    // Show recommendation banner if diagnostic was taken
+    let banner = '';
+    if (diag && diag.topicResults) {
+        const weak = Object.entries(diag.topicResults).filter(([, pct]) => pct < 60).slice(0, 3);
+        if (weak.length > 0) {
+            banner = `<div class="learn-recommendation" style="background:linear-gradient(135deg,#fff3e0,#ffe0b2);border-radius:12px;padding:16px 20px;margin-bottom:20px;border-left:4px solid #f39c12">
+                <strong>⚡ Күшейту керек:</strong> ${weak.map(([name]) => name).join(', ')}
+                <br><small style="color:#7f8c8d">Диагностика нәтижесі бойынша (${diag.score}%)</small>
+            </div>`;
+        }
+    }
+
+    grid.innerHTML = banner + modules.map(mod => {
         const totalTopics = mod.topics.length;
         const completed = mod.topics.filter(t => progress[mod.id + '_' + t.id]?.completed).length;
         const pct = totalTopics > 0 ? Math.round(completed / totalTopics * 100) : 0;
@@ -2377,19 +2390,47 @@ function showPracticeHint() {
 }
 
 function finishPractice() {
-    const { questions, score } = practiceState;
+    const { questions, score, isQuiz } = practiceState;
     const pct = Math.round(score / questions.length * 100);
-    $('#lessonContent').innerHTML = `
-        <div class="practice-result">
-            <div class="practice-result-icon">${pct >= 70 ? '🎉' : pct >= 40 ? '💪' : '📚'}</div>
-            <h3>Жаттығу нәтижесі</h3>
-            <div class="practice-result-score">${score}/${questions.length} (${pct}%)</div>
-            <p>${pct >= 70 ? 'Тамаша! Тест тапсыруға дайынсыз.' : pct >= 40 ? 'Жаман емес! Теорияны қайталап, қайта тырысыңыз.' : 'Теорияны қайтадан оқып шығыңыз.'}</p>
-            <div style="display:flex;gap:10px;justify-content:center;margin-top:15px">
-                <button class="btn btn-outline" onclick="renderLessonTab('practice', getTopicById(currentModuleId, currentTopicId))">🔄 Қайта бастау</button>
-                <button class="btn btn-primary" onclick="document.querySelector('[data-tab=quiz]').click()">📝 Тест тапсыру</button>
-            </div>
-        </div>`;
+
+    if (isQuiz) {
+        // Quiz completion — save progress
+        saveTopicProgress(currentModuleId, currentTopicId, pct);
+        const passed = pct >= 60;
+        $('#lessonContent').innerHTML = `
+            <div class="practice-result">
+                <div class="practice-result-icon">${passed ? '🏆' : '📚'}</div>
+                <h3>${passed ? 'Тест тапсырылды!' : 'Тест тапсырылмады'}</h3>
+                <div class="practice-result-score">${score}/${questions.length} (${pct}%)</div>
+                <p>${passed ? 'Тамаша нәтиже! Тақырып аяқталды ✅' : 'Кем дегенде 60% жинау керек. Теорияны қайталаңыз.'}</p>
+                ${passed ? '<p style="color:#2ecc71;margin-top:8px">+' + (pct >= 90 ? 30 : pct >= 70 ? 20 : 10) + ' XP</p>' : ''}
+                <div style="display:flex;gap:10px;justify-content:center;margin-top:15px;flex-wrap:wrap">
+                    <button class="btn btn-outline" onclick="startQuiz(getTopicById(currentModuleId, currentTopicId))">🔄 Қайта тапсыру</button>
+                    <button class="btn btn-primary" onclick="openModule(currentModuleId)">📋 Модульге оралу</button>
+                </div>
+            </div>`;
+        // Award XP
+        if (passed && currentUser) {
+            const xpGain = pct >= 90 ? 30 : pct >= 70 ? 20 : 10;
+            const newXP = (currentUserData?.xp || 0) + xpGain;
+            db.collection('users').doc(currentUser.uid).update({ xp: newXP }).catch(() => {});
+            if (currentUserData) currentUserData.xp = newXP;
+            if (typeof updateGamificationUI === 'function') updateGamificationUI();
+        }
+    } else {
+        // Practice completion
+        $('#lessonContent').innerHTML = `
+            <div class="practice-result">
+                <div class="practice-result-icon">${pct >= 70 ? '🎉' : pct >= 40 ? '💪' : '📚'}</div>
+                <h3>Жаттығу нәтижесі</h3>
+                <div class="practice-result-score">${score}/${questions.length} (${pct}%)</div>
+                <p>${pct >= 70 ? 'Тамаша! Тест тапсыруға дайынсыз.' : pct >= 40 ? 'Жаман емес! Теорияны қайталап, қайта тырысыңыз.' : 'Теорияны қайтадан оқып шығыңыз.'}</p>
+                <div style="display:flex;gap:10px;justify-content:center;margin-top:15px">
+                    <button class="btn btn-outline" onclick="renderLessonTab('practice', getTopicById(currentModuleId, currentTopicId))">🔄 Қайта бастау</button>
+                    <button class="btn btn-primary" onclick="document.querySelector('[data-tab=quiz]').click()">📝 Тест тапсыру</button>
+                </div>
+            </div>`;
+    }
 }
 
 function startQuiz(topic) {
