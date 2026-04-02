@@ -228,6 +228,13 @@
             <li class="active" data-page="home">
                 <a href="#"><i class="fas fa-home"></i> <span>Бас бет</span></a>
             </li>
+            <li data-page="learn" class="has-submenu">
+                <a href="#"><i class="fas fa-graduation-cap"></i> <span>📚 Оқу / Обучение</span> <i class="fas fa-chevron-right submenu-arrow"></i></a>
+                <ul class="submenu">
+                    <li data-page="learn"><a href="#">Бағдарлама / Программа</a></li>
+                    <li data-page="diagnostic"><a href="#">🎯 Диагностика</a></li>
+                </ul>
+            </li>
             <li data-page="tests" class="has-submenu">
                 <a href="#"><i class="fas fa-list-check"></i> <span data-i18n="menu_tests">Тесттер</span> <i class="fas fa-chevron-right submenu-arrow"></i></a>
                 <ul class="submenu">
@@ -697,6 +704,78 @@
             </div>
         </div>
 
+        <!-- ============ LEARNING PATH (Обучение) ============ -->
+        <div class="page" id="page-learn">
+            <h2 class="page-title">📚 Оқу бағдарламасы / Учебная программа</h2>
+            <div class="learn-grade-tabs">
+                <button class="learn-grade-tab active" data-grade="5">5 сынып</button>
+                <button class="learn-grade-tab" data-grade="6">6 сынып</button>
+                <button class="learn-grade-tab" data-grade="special">НИШ/КТЛ арнайы</button>
+            </div>
+            <div class="learn-modules-grid" id="learnModulesGrid">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+
+        <!-- ============ MODULE TOPICS PAGE ============ -->
+        <div class="page" id="page-module">
+            <button class="btn btn-outline btn-sm" onclick="showPage('learn')" style="margin-bottom:15px;">
+                <i class="fas fa-arrow-left"></i> Артқа
+            </button>
+            <h2 class="page-title" id="moduleTitle">Модуль</h2>
+            <div class="module-progress-bar">
+                <div class="module-progress-fill" id="moduleProgressFill" style="width:0%"></div>
+            </div>
+            <p class="module-progress-text" id="moduleProgressText">0% аяқталды</p>
+            <div class="topics-list" id="topicsList">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+
+        <!-- ============ LESSON PAGE ============ -->
+        <div class="page" id="page-lesson">
+            <button class="btn btn-outline btn-sm" id="lessonBackBtn" style="margin-bottom:15px;">
+                <i class="fas fa-arrow-left"></i> Артқа
+            </button>
+            <div class="lesson-header">
+                <h2 id="lessonTitle">Сабақ</h2>
+                <div class="lesson-tabs" id="lessonTabs">
+                    <button class="lesson-tab active" data-tab="theory"><i class="fas fa-book"></i> Теория</button>
+                    <button class="lesson-tab" data-tab="examples"><i class="fas fa-lightbulb"></i> Мысалдар</button>
+                    <button class="lesson-tab" data-tab="practice"><i class="fas fa-pencil-alt"></i> Жаттығу</button>
+                    <button class="lesson-tab" data-tab="quiz"><i class="fas fa-check-circle"></i> Тест</button>
+                </div>
+            </div>
+            <div class="lesson-content" id="lessonContent">
+                <!-- Dynamic content -->
+            </div>
+        </div>
+
+        <!-- ============ DIAGNOSTIC TEST PAGE ============ -->
+        <div class="page" id="page-diagnostic">
+            <div class="diagnostic-intro" id="diagnosticIntro">
+                <div class="diagnostic-icon">🎯</div>
+                <h2>Диагностикалық тест</h2>
+                <p>Бұл тест сіздің деңгейіңізді анықтайды және жеке оқу жоспарын құрады.</p>
+                <ul>
+                    <li>📝 30 сұрақ (барлық тақырыптар бойынша)</li>
+                    <li>⏱ 45 минут</li>
+                    <li>📊 Нәтиже: деңгей + жеке жоспар</li>
+                </ul>
+                <button class="btn btn-primary" id="startDiagnosticBtn" style="margin-top:15px; font-size:16px; padding:14px 30px;">
+                    🚀 Тестті бастау
+                </button>
+            </div>
+            <div class="diagnostic-result" id="diagnosticResult" style="display:none;">
+                <h2>📊 Диагностика нәтижесі</h2>
+                <div class="diagnostic-overall" id="diagnosticOverall"></div>
+                <div class="diagnostic-topics" id="diagnosticTopics"></div>
+                <button class="btn btn-primary" onclick="showPage('learn')" style="margin-top:15px;">
+                    📚 Оқуды бастау
+                </button>
+            </div>
+        </div>
+
         <!-- ============ TEST REVIEW PAGE (Разбор ошибок) ============ -->
         <div class="page" id="page-review">
             <h2 class="page-title" data-i18n="review_title">Тест нәтижесін талдау</h2>
@@ -958,6 +1037,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="js/curriculum.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

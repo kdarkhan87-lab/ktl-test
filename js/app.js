@@ -490,6 +490,9 @@ document.addEventListener('DOMContentLoaded', () => {
     registerServiceWorker();
     renderTheoryPage('math');
     renderTheoryPage('logic');
+    setupLearnTabs();
+    const diagBtn = $('#startDiagnosticBtn');
+    if (diagBtn) diagBtn.addEventListener('click', startDiagnostic);
 
     // Restore language
     const savedLang = localStorage.getItem('ktl_lang') || 'kz';
@@ -583,6 +586,13 @@ function showPage(page) {
     if (page === 'leaderboard') loadLeaderboard('all');
     if (page === 'theory-math') renderTheoryPage('math');
     if (page === 'theory-logic') renderTheoryPage('logic');
+    if (page === 'learn') renderLearnPage(document.querySelector('.learn-grade-tab.active')?.dataset.grade || '5');
+    if (page === 'diagnostic') {
+        $('#diagnosticIntro').style.display = 'block';
+        $('#diagnosticResult').style.display = 'none';
+        const testArea = document.getElementById('diagnosticTestArea');
+        if (testArea) testArea.style.display = 'none';
+    }
 }
 
 function setActiveMenu(li) {
@@ -2156,6 +2166,407 @@ function renderTheoryPage(type) {
             <div class="theory-card-body">${item.body}</div>
         </div>
     `).join('');
+}
+
+// ==================== FEATURE 10: LEARNING PATH ENGINE ====================
+let currentModuleId = null;
+let currentTopicId = null;
+let practiceState = { questions: [], current: 0, score: 0 };
+
+function renderLearnPage(grade) {
+    const grid = $('#learnModulesGrid');
+    if (!grid) return;
+    const modules = getModulesByGrade(grade || '5');
+    const progress = currentUserData?.learningProgress || {};
+
+    grid.innerHTML = modules.map(mod => {
+        const totalTopics = mod.topics.length;
+        const completed = mod.topics.filter(t => progress[mod.id + '_' + t.id]?.completed).length;
+        const pct = totalTopics > 0 ? Math.round(completed / totalTopics * 100) : 0;
+        return `
+        <div class="module-card" onclick="openModule('${mod.id}')">
+            <div class="module-icon">${mod.icon}</div>
+            <h3>${mod.title}</h3>
+            <p>${mod.subtitle}</p>
+            <div class="module-card-progress">
+                <div class="module-card-progress-fill" style="width:${pct}%"></div>
+            </div>
+            <span class="module-card-stat">${completed}/${totalTopics} тақырып · ${pct}%</span>
+        </div>`;
+    }).join('');
+}
+
+function setupLearnTabs() {
+    document.querySelectorAll('.learn-grade-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.learn-grade-tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderLearnPage(btn.dataset.grade);
+        });
+    });
+}
+
+function openModule(moduleId) {
+    const mod = getModuleById(moduleId);
+    if (!mod) return;
+    currentModuleId = moduleId;
+    const progress = currentUserData?.learningProgress || {};
+    const totalTopics = mod.topics.length;
+    const completed = mod.topics.filter(t => progress[moduleId + '_' + t.id]?.completed).length;
+    const pct = totalTopics > 0 ? Math.round(completed / totalTopics * 100) : 0;
+
+    $('#moduleTitle').textContent = mod.icon + ' ' + mod.title;
+    $('#moduleProgressFill').style.width = pct + '%';
+    $('#moduleProgressText').textContent = pct + '% аяқталды (' + completed + '/' + totalTopics + ')';
+
+    const list = $('#topicsList');
+    list.innerHTML = mod.topics.map((topic, i) => {
+        const key = moduleId + '_' + topic.id;
+        const done = progress[key]?.completed;
+        const score = progress[key]?.quizScore;
+        return `
+        <div class="topic-card ${done ? 'completed' : ''}" onclick="openLesson('${moduleId}', '${topic.id}')">
+            <div class="topic-number">${done ? '<i class="fas fa-check-circle" style="color:#2ecc71"></i>' : (i + 1)}</div>
+            <div class="topic-info">
+                <h4>${topic.title}</h4>
+                ${score !== undefined ? '<span class="topic-score">Тест: ' + score + '%</span>' : ''}
+            </div>
+            <i class="fas fa-chevron-right" style="color:#7f8c8d"></i>
+        </div>`;
+    }).join('');
+
+    showPage('module');
+}
+
+function openLesson(moduleId, topicId) {
+    const topic = getTopicById(moduleId, topicId);
+    if (!topic) return;
+    currentModuleId = moduleId;
+    currentTopicId = topicId;
+
+    $('#lessonTitle').textContent = topic.title;
+    $('#lessonBackBtn').onclick = () => openModule(moduleId);
+
+    // Setup tabs
+    const tabs = document.querySelectorAll('#lessonTabs .lesson-tab');
+    tabs.forEach(tab => {
+        tab.onclick = () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            renderLessonTab(tab.dataset.tab, topic);
+        };
+    });
+
+    // Show theory tab by default
+    tabs.forEach(t => t.classList.remove('active'));
+    tabs[0].classList.add('active');
+    renderLessonTab('theory', topic);
+    showPage('lesson');
+}
+
+function renderLessonTab(tab, topic) {
+    const container = $('#lessonContent');
+    if (!container) return;
+
+    switch (tab) {
+        case 'theory':
+            container.innerHTML = `<div class="lesson-theory">${topic.theory}</div>`;
+            break;
+
+        case 'examples':
+            container.innerHTML = (topic.examples || []).map((ex, i) => `
+                <div class="example-card">
+                    <div class="example-problem"><strong>Мысал ${i + 1}:</strong> ${ex.problem}</div>
+                    <div class="example-solution">
+                        <button class="btn btn-sm btn-outline" onclick="this.nextElementSibling.style.display='block'; this.style.display='none';">
+                            <i class="fas fa-eye"></i> Шешімін көру
+                        </button>
+                        <div style="display:none" class="solution-content">${ex.solution}</div>
+                    </div>
+                </div>
+            `).join('') || '<p>Мысалдар жоқ</p>';
+            break;
+
+        case 'practice':
+            startPractice(topic);
+            break;
+
+        case 'quiz':
+            startQuiz(topic);
+            break;
+    }
+}
+
+function startPractice(topic) {
+    const questions = topic.practice || [];
+    if (questions.length === 0) {
+        $('#lessonContent').innerHTML = '<p>Жаттығу сұрақтары жоқ</p>';
+        return;
+    }
+    practiceState = { questions, current: 0, score: 0, answered: new Array(questions.length).fill(null) };
+    renderPracticeQuestion();
+}
+
+function renderPracticeQuestion() {
+    const { questions, current, answered } = practiceState;
+    const q = questions[current];
+    const container = $('#lessonContent');
+    const isAnswered = answered[current] !== null;
+
+    container.innerHTML = `
+        <div class="practice-header">
+            <span>Сұрақ ${current + 1}/${questions.length}</span>
+            <span>Дұрыс: ${practiceState.score}</span>
+        </div>
+        <div class="practice-question">
+            <p class="practice-q-text">${q.q}</p>
+            <div class="practice-options">
+                ${q.a.map((opt, i) => {
+                    let cls = 'practice-option';
+                    if (isAnswered) {
+                        if (i === q.correct) cls += ' correct';
+                        else if (i === answered[current] && i !== q.correct) cls += ' wrong';
+                    }
+                    return `<button class="${cls}" ${isAnswered ? 'disabled' : ''} onclick="answerPractice(${i})">${opt}</button>`;
+                }).join('')}
+            </div>
+            ${isAnswered ? `
+                <div class="practice-feedback ${answered[current] === q.correct ? 'correct' : 'wrong'}">
+                    ${answered[current] === q.correct ? '✅ Дұрыс!' : '❌ Қате. Дұрыс жауап: ' + q.a[q.correct]}
+                    ${q.hint && answered[current] !== q.correct ? '<br><em>💡 ' + q.hint + '</em>' : ''}
+                </div>
+                <div class="practice-nav">
+                    ${current > 0 ? '<button class="btn btn-outline btn-sm" onclick="prevPractice()"><i class="fas fa-arrow-left"></i> Алдыңғы</button>' : ''}
+                    ${current < questions.length - 1 ?
+                        '<button class="btn btn-primary btn-sm" onclick="nextPractice()">Келесі <i class="fas fa-arrow-right"></i></button>' :
+                        '<button class="btn btn-primary btn-sm" onclick="finishPractice()">Аяқтау <i class="fas fa-check"></i></button>'
+                    }
+                </div>
+            ` : ''}
+            ${!isAnswered && q.hint ? '<button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="showPracticeHint()">💡 Кеңес</button>' : ''}
+            <div id="practiceHint" style="display:none;margin-top:10px;padding:10px;background:rgba(46,204,113,0.1);border-radius:8px;color:#2ecc71"></div>
+        </div>`;
+}
+
+function answerPractice(idx) {
+    if (practiceState.answered[practiceState.current] !== null) return;
+    practiceState.answered[practiceState.current] = idx;
+    if (idx === practiceState.questions[practiceState.current].correct) {
+        practiceState.score++;
+    }
+    renderPracticeQuestion();
+}
+
+function nextPractice() {
+    practiceState.current++;
+    renderPracticeQuestion();
+}
+
+function prevPractice() {
+    practiceState.current--;
+    renderPracticeQuestion();
+}
+
+function showPracticeHint() {
+    const hint = practiceState.questions[practiceState.current].hint;
+    if (hint) {
+        const el = document.getElementById('practiceHint');
+        el.style.display = 'block';
+        el.textContent = '💡 ' + hint;
+    }
+}
+
+function finishPractice() {
+    const { questions, score } = practiceState;
+    const pct = Math.round(score / questions.length * 100);
+    $('#lessonContent').innerHTML = `
+        <div class="practice-result">
+            <div class="practice-result-icon">${pct >= 70 ? '🎉' : pct >= 40 ? '💪' : '📚'}</div>
+            <h3>Жаттығу нәтижесі</h3>
+            <div class="practice-result-score">${score}/${questions.length} (${pct}%)</div>
+            <p>${pct >= 70 ? 'Тамаша! Тест тапсыруға дайынсыз.' : pct >= 40 ? 'Жаман емес! Теорияны қайталап, қайта тырысыңыз.' : 'Теорияны қайтадан оқып шығыңыз.'}</p>
+            <div style="display:flex;gap:10px;justify-content:center;margin-top:15px">
+                <button class="btn btn-outline" onclick="renderLessonTab('practice', getTopicById(currentModuleId, currentTopicId))">🔄 Қайта бастау</button>
+                <button class="btn btn-primary" onclick="document.querySelector('[data-tab=quiz]').click()">📝 Тест тапсыру</button>
+            </div>
+        </div>`;
+}
+
+function startQuiz(topic) {
+    const questions = topic.quiz || [];
+    if (questions.length === 0) {
+        $('#lessonContent').innerHTML = '<p>Тест сұрақтары жоқ</p>';
+        return;
+    }
+    practiceState = { questions, current: 0, score: 0, answered: new Array(questions.length).fill(null), isQuiz: true };
+    renderPracticeQuestion();
+}
+
+async function saveTopicProgress(moduleId, topicId, quizScore) {
+    if (!currentUser) return;
+    const key = moduleId + '_' + topicId;
+    const progress = currentUserData?.learningProgress || {};
+    progress[key] = { completed: true, quizScore, date: new Date().toISOString() };
+
+    try {
+        await db.collection('users').doc(currentUser.uid).update({
+            learningProgress: progress
+        });
+        if (currentUserData) currentUserData.learningProgress = progress;
+    } catch (e) {
+        console.error('Error saving progress:', e);
+        // Save locally as fallback
+        if (currentUserData) currentUserData.learningProgress = progress;
+    }
+}
+
+// ==================== FEATURE 11: DIAGNOSTIC TEST ====================
+let diagnosticState = null;
+
+function startDiagnostic() {
+    // Collect questions from all curriculum modules
+    const allQuestions = [];
+    CURRICULUM.grade5.forEach(mod => {
+        mod.topics.forEach(topic => {
+            (topic.quiz || []).forEach(q => {
+                allQuestions.push({ ...q, moduleId: mod.id, topicId: topic.id, topicTitle: topic.title });
+            });
+            // Also take some practice questions
+            const practice = (topic.practice || []).slice(0, 2);
+            practice.forEach(q => {
+                allQuestions.push({ ...q, moduleId: mod.id, topicId: topic.id, topicTitle: topic.title });
+            });
+        });
+    });
+
+    // Shuffle and take 30
+    const shuffled = allQuestions.sort(() => Math.random() - 0.5).slice(0, 30);
+    diagnosticState = {
+        questions: shuffled,
+        current: 0,
+        answers: new Array(shuffled.length).fill(null),
+        startTime: Date.now()
+    };
+
+    $('#diagnosticIntro').style.display = 'none';
+    $('#diagnosticResult').style.display = 'none';
+    renderDiagnosticQuestion();
+}
+
+function renderDiagnosticQuestion() {
+    const { questions, current, answers } = diagnosticState;
+    if (current >= questions.length) {
+        finishDiagnostic();
+        return;
+    }
+    const q = questions[current];
+    const elapsed = Math.floor((Date.now() - diagnosticState.startTime) / 1000);
+    const remaining = Math.max(0, 45 * 60 - elapsed);
+    const mins = Math.floor(remaining / 60);
+    const secs = remaining % 60;
+
+    const container = $('#diagnosticIntro').parentElement;
+    // Create diagnostic test area if not exists
+    let testArea = document.getElementById('diagnosticTestArea');
+    if (!testArea) {
+        testArea = document.createElement('div');
+        testArea.id = 'diagnosticTestArea';
+        container.appendChild(testArea);
+    }
+    testArea.style.display = 'block';
+
+    testArea.innerHTML = `
+        <div class="diagnostic-header">
+            <span>Сұрақ ${current + 1}/${questions.length}</span>
+            <span>⏱ ${mins}:${secs < 10 ? '0' : ''}${secs}</span>
+        </div>
+        <div class="practice-question">
+            <p class="practice-q-text">${q.q}</p>
+            <p style="color:#7f8c8d;font-size:12px;margin:-5px 0 10px">${q.topicTitle}</p>
+            <div class="practice-options">
+                ${q.a.map((opt, i) => `
+                    <button class="practice-option ${answers[current] === i ? 'selected' : ''}" onclick="selectDiagnosticAnswer(${i})">${opt}</button>
+                `).join('')}
+            </div>
+            <div class="practice-nav" style="margin-top:15px">
+                ${current > 0 ? '<button class="btn btn-outline btn-sm" onclick="diagnosticState.current--; renderDiagnosticQuestion()"><i class="fas fa-arrow-left"></i></button>' : '<span></span>'}
+                ${current < questions.length - 1 ?
+                    '<button class="btn btn-primary btn-sm" onclick="diagnosticState.current++; renderDiagnosticQuestion()">Келесі <i class="fas fa-arrow-right"></i></button>' :
+                    '<button class="btn btn-primary btn-sm" onclick="finishDiagnostic()">Аяқтау <i class="fas fa-check"></i></button>'
+                }
+            </div>
+        </div>`;
+}
+
+function selectDiagnosticAnswer(idx) {
+    diagnosticState.answers[diagnosticState.current] = idx;
+    renderDiagnosticQuestion();
+}
+
+function finishDiagnostic() {
+    const { questions, answers } = diagnosticState;
+    let testArea = document.getElementById('diagnosticTestArea');
+    if (testArea) testArea.style.display = 'none';
+
+    // Calculate results by topic
+    const topicResults = {};
+    let totalCorrect = 0;
+
+    questions.forEach((q, i) => {
+        const key = q.topicTitle;
+        if (!topicResults[key]) topicResults[key] = { correct: 0, total: 0, moduleId: q.moduleId };
+        topicResults[key].total++;
+        if (answers[i] === q.correct) {
+            topicResults[key].correct++;
+            totalCorrect++;
+        }
+    });
+
+    const totalPct = Math.round(totalCorrect / questions.length * 100);
+    let level = 'Бастаушы';
+    let levelIcon = '🌱';
+    if (totalPct >= 80) { level = 'Жоғары'; levelIcon = '⭐'; }
+    else if (totalPct >= 60) { level = 'Орта'; levelIcon = '📗'; }
+    else if (totalPct >= 40) { level = 'Базалық'; levelIcon = '📘'; }
+
+    // Sort topics by weakness
+    const sorted = Object.entries(topicResults).sort((a, b) => (a[1].correct / a[1].total) - (b[1].correct / b[1].total));
+
+    $('#diagnosticResult').style.display = 'block';
+    $('#diagnosticOverall').innerHTML = `
+        <div style="font-size:48px;margin:10px 0">${levelIcon}</div>
+        <h3>Сіздің деңгейіңіз: ${level}</h3>
+        <p style="font-size:24px;font-weight:bold;color:#2ecc71">${totalCorrect}/${questions.length} (${totalPct}%)</p>`;
+
+    $('#diagnosticTopics').innerHTML = `
+        <h4 style="margin:15px 0 10px">Тақырыптар бойынша:</h4>
+        ${sorted.map(([name, data]) => {
+            const pct = Math.round(data.correct / data.total * 100);
+            const color = pct >= 70 ? '#2ecc71' : pct >= 40 ? '#f39c12' : '#e74c3c';
+            return `<div class="diagnostic-topic-row" style="display:flex;align-items:center;gap:10px;margin:8px 0">
+                <span style="flex:1">${name}</span>
+                <div style="width:120px;height:8px;background:rgba(255,255,255,0.1);border-radius:4px">
+                    <div style="width:${pct}%;height:100%;background:${color};border-radius:4px"></div>
+                </div>
+                <span style="color:${color};font-size:13px;width:40px;text-align:right">${pct}%</span>
+            </div>`;
+        }).join('')}
+        <div style="margin-top:20px;padding:15px;background:rgba(231,76,60,0.1);border-radius:10px">
+            <h4 style="color:#e74c3c;margin-bottom:8px">⚡ Күшейту керек тақырыптар:</h4>
+            ${sorted.filter(([, d]) => d.correct / d.total < 0.6).map(([name]) => `<p>• ${name}</p>`).join('') || '<p>Барлық тақырыптар жақсы!</p>'}
+        </div>`;
+
+    // Save diagnostic result
+    if (currentUser) {
+        db.collection('users').doc(currentUser.uid).update({
+            diagnosticResult: {
+                score: totalPct,
+                level,
+                topicResults: Object.fromEntries(sorted.map(([name, d]) => [name, Math.round(d.correct / d.total * 100)])),
+                date: new Date().toISOString()
+            }
+        }).catch(e => console.error('Error saving diagnostic:', e));
+    }
 }
 
 // ==================== FEATURE 8: PWA ====================
