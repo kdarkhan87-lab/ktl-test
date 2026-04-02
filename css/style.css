@@ -775,9 +775,31 @@ body {
 }
 .diagnostic-topic-row { font-size: 14px; color: #2c3e50; }
 
-/* Responsive */
+/* Responsive learning pages */
 @media (max-width: 768px) {
-    .practice-question { padding: 16px; }
-    .practice-q-text { font-size: 15px; }
-    .lesson-theory { padding: 16px; }
+    .practice-question { padding: 14px; }
+    .practice-q-text { font-size: 14px; }
+    .practice-option { padding: 10px 14px; font-size: 13px; }
+    .practice-nav { flex-wrap: wrap; gap: 8px; }
+    .lesson-theory { padding: 14px; }
+    .lesson-theory h3 { font-size: 16px; }
+    .lesson-theory p { font-size: 13px; }
+    .theory-formula { font-size: 12px; padding: 8px 10px; overflow-x: auto; }
+    .theory-table { font-size: 11px; }
+    .theory-table th, .theory-table td { padding: 5px 8px; }
+    .learn-grade-tabs { flex-wrap: wrap; gap: 6px; }
+    .learn-grade-tab { font-size: 13px; padding: 8px 14px; }
+    .learn-modules-grid { grid-template-columns: 1fr; gap: 10px; }
+    .module-card { padding: 16px; }
+    .module-card h3 { font-size: 15px; }
+    .lesson-tabs { gap: 2px; }
+    .lesson-tab { font-size: 12px; padding: 8px 10px; }
+    .lesson-tab i { display: none; }
+    .example-card { padding: 14px; }
+    .example-problem { font-size: 14px; }
+    .practice-result { padding: 20px; }
+    .practice-result-icon { font-size: 40px; }
+    .practice-result-score { font-size: 22px; }
+    .diagnostic-intro { padding: 25px 16px; }
+    .page-title { font-size: 18px; }
 }
