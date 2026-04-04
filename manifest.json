@@ -1,7 +1,7 @@
 {
-    "name": "KTL Test — Подготовка к КТЛ/БИЛ/НИШ",
+    "name": "KTL Test — КТЛ/БІЛ/НИШ-ке дайындық",
     "short_name": "KTL Test",
-    "description": "Система тестирования для подготовки к вступительным экзаменам КТЛ, БИЛ, НИШ",
+    "description": "КТЛ, БІЛ, НИШ қабылдау емтихандарына дайындық тестілеу жүйесі",
     "start_url": "/KTL-Test/",
     "display": "standalone",
     "background_color": "#1a1a2e",
