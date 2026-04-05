@@ -2450,6 +2450,7 @@ function startQuiz(topic) {
         $('#lessonContent').innerHTML = '<p>Тест сұрақтары жоқ</p>';
         return;
     }
+    shuffleOptions(questions);
     practiceState = { questions, current: 0, score: 0, answered: new Array(questions.length).fill(null), isQuiz: true };
     renderPracticeQuestion();
 }

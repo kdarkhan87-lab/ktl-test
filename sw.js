@@ -1,10 +1,10 @@
-const CACHE_NAME = 'ktl-test-v6';
+const CACHE_NAME = 'ktl-test-v7';
 const ASSETS = [
     '/ktl-test/',
     '/ktl-test/index.html',
     '/ktl-test/css/style.css',
-    '/ktl-test/js/app.js?v=6',
-    '/ktl-test/js/curriculum.js?v=6',
+    '/ktl-test/js/app.js?v=7',
+    '/ktl-test/js/curriculum.js?v=7',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
 ];
