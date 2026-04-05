@@ -1,9 +1,10 @@
-const CACHE_NAME = 'ktl-test-v1';
+const CACHE_NAME = 'ktl-test-v3';
 const ASSETS = [
-    '/KTL-Test/',
-    '/KTL-Test/index.html',
-    '/KTL-Test/css/style.css',
-    '/KTL-Test/js/app.js',
+    '/ktl-test/',
+    '/ktl-test/index.html',
+    '/ktl-test/css/style.css',
+    '/ktl-test/js/app.js',
+    '/ktl-test/js/curriculum.js',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
 ];
@@ -21,10 +22,26 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-    // Network-first for API calls, cache-first for assets
+    // Don't cache Firebase requests
     if (e.request.url.includes('firebasejs') || e.request.url.includes('googleapis.com/identitytoolkit') || e.request.url.includes('firestore.googleapis.com')) {
-        return; // Don't cache Firebase requests
+        return;
     }
+
+    // Network-first for JS/CSS/HTML (always get latest code)
+    if (e.request.url.match(/\.(js|css|html)$/) || e.request.url.endsWith('/ktl-test/')) {
+        e.respondWith(
+            fetch(e.request).then(resp => {
+                if (resp.status === 200) {
+                    const clone = resp.clone();
+                    caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+                }
+                return resp;
+            }).catch(() => caches.match(e.request))
+        );
+        return;
+    }
+
+    // Cache-first for fonts and icons (rarely change)
     e.respondWith(
         caches.match(e.request).then(cached => cached || fetch(e.request).then(resp => {
             if (resp.status === 200) {
