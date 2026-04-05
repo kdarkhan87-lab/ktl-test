@@ -584,6 +584,7 @@ function showPage(page) {
     // Trigger page-specific actions
     if (page === 'stats') renderStatsPage();
     if (page === 'leaderboard') loadLeaderboard('all');
+    if (page === 'theory') page = 'theory-math';
     if (page === 'theory-math') renderTheoryPage('math');
     if (page === 'theory-logic') renderTheoryPage('logic');
     if (page === 'learn') renderLearnPage(document.querySelector('.learn-grade-tab.active')?.dataset.grade || '5');
@@ -2088,21 +2089,72 @@ const theoryContent = {
             <li>Соңғы екі саны 4-ке бөлінсе → 4-ке бөлінеді</li>
             <li>0 немесе 5-ке аяқталса → 5-ке бөлінеді</li></ul>`
         },
-        {
-            title: '📊 Бөлшектер',
-            body: `<p><strong>Бөлшектерді қосу/азайту:</strong></p>
-            <div class="theory-formula">a/b + c/d = (a×d + c×b) / (b×d)</div>
-            <div class="theory-formula">a/b × c/d = (a×c) / (b×d)</div>
-            <div class="theory-formula">a/b ÷ c/d = (a×d) / (b×c)</div>
-            <p><strong>Ондық бөлшек → жай бөлшек:</strong> 0.75 = 75/100 = 3/4</p>
-            <p><strong>Жай бөлшек → ондық бөлшек:</strong> 3/4 = 3 ÷ 4 = 0.75</p>`
+                {
+            title: '📚 Бөлшектер',
+            body: `<div style="margin-bottom:12px;">
+<p><strong>1. Бөлшек ұғямы</strong></p>
+<p>Бөлшек — бүтіннің бір немесе бірнеше бөлігін білдіреді.</p>
+<div class="theory-formula">a/b: a &mdash; алым, b &mdash; бөлім</div>
+<table class="theory-table"><tr><th>Түрі</th><th>Мысал</th><th>Шарт</th></tr>
+<tr><td>Дұрыс</td><td>3/5, 2/7</td><td>a &lt; b</td></tr>
+<tr><td>Бұрыс</td><td>7/4, 9/3</td><td>a &ge; b</td></tr>
+<tr><td>Аралас</td><td>2 1/3</td><td>бүтін + бөлшек</td></tr>
+</table></div>
+<div style="margin-bottom:12px;">
+<p><strong>2. Бөлшектермен амалдар</strong></p>
+<div class="theory-formula">a/b + c/d = (a&times;d + c&times;b) / (b&times;d)</div>
+<div class="theory-formula">a/b &times; c/d = (a&times;c) / (b&times;d)</div>
+<div class="theory-formula">a/b &divide; c/d = (a&times;d) / (b&times;c)</div>
+<p>Мысал: 1/2 + 1/3 = 5/6</p></div>
+<div>
+<p><strong>3. Бөлшекті қысқарту</strong></p>
+<div class="theory-formula">a/b = (a&divide;ЕҮОБ) / (b&divide;ЕҮОБ)</div>
+<p>Мысал: 12/18 &rarr; ЕҮОБ=6 &rarr; <strong>2/3</strong></p>
+</div>`
         },
         {
-            title: '📏 Пайыздар',
-            body: `<div class="theory-formula">Пайыз = (Бөлік / Бүтін) × 100%</div>
-            <div class="theory-formula">Бөлік = Бүтін × Пайыз / 100</div>
-            <p><strong>Мысал:</strong> 240-тың 25%-ы = 240 × 25/100 = 60</p>
-            <p><strong>Кері есеп:</strong> 60 — бұл қандай санның 25%-ы? → 60 × 100/25 = 240</p>`
+            title: '📚 Ондық бөлшектер',
+            body: `<div style="margin-bottom:12px;">
+<p><strong>1. Ондық бөлшек ұғямы</strong></p>
+<p>Ондық бөлшек — бөлімі 10, 100, 1000 болатын бөлшек. Нүктемен жазылады.</p>
+<table class="theory-table"><tr><th>Разряд</th><th>3,456-дағы мысал</th></tr>
+<tr><td>Бүтін бөлік</td><td>3</td></tr>
+<tr><td>Ондық (1/10)</td><td>4 &rarr; 0,4</td></tr>
+<tr><td>Жүздік (1/100)</td><td>5 &rarr; 0,05</td></tr>
+<tr><td>Мыңдық (1/1000)</td><td>6 &rarr; 0,006</td></tr>
+</table>
+<div class="theory-formula">3,456 = 3 + 4/10 + 5/100 + 6/1000</div></div>
+<div style="margin-bottom:12px;">
+<p><strong>2. Ондық бөлшектермен амалдар</strong></p>
+<div class="theory-formula">Косу/Азайту: нүктелерді теңестір</div>
+<div class="theory-formula">Көбейту: нүктесіз көбейт — ондық орындар қос</div>
+<div class="theory-formula">Бөлу: бөлгіштің nүктесін жою үшін ×10/100 қе көбейт</div>
+<p>Мысал: 1,2 &times; 0,3 = 0,36 | 4,8 &divide; 0,4 &rarr; 12</p></div>
+<div>
+<p><strong>3. Дөңгелектеу ережесі</strong></p>
+<p>Оң жақтағы цифр ≥5 → жоғарылат | <5 → өзгерме</p>
+<div class="theory-formula">3,456 &rarr; ондыққа &rarr; 3,5 | 3,432 &rarr; ондыққа &rarr; 3,4</div>
+</div>`
+        },
+                {
+            title: '📚 Пайыздар',
+            body: `<div style="margin-bottom:12px;">
+<p><strong>1. Саннан пайызды табу</strong></p>
+<p>Пайыз — бүтіннің жүзден бір бөлігі. 1% = 1/100 = 0,01</p>
+<div class="theory-formula">N санының P% = N &times; P / 100</div>
+<p>Алгоритм: Санды тап &rarr; Пайызды тап &rarr; N&times;P &rarr; 100-ге бөл</p>
+<p>Мысал: 800-дің 15%-і = 800&times;15/100 = <strong>120</strong></p></div>
+<div style="margin-bottom:12px;">
+<p><strong>2. Пайызы бойынша санды табу</strong></p>
+<div class="theory-formula">Бүтін сан = Алган &times; 100 / P%</div>
+<p>Алгоритм: Алганды тап &rarr; &times;100 &rarr; P-ге бөл</p>
+<p>Мысал: 120 &mdash; санның 15%-і &rarr; 120&times;100/15 = <strong>800</strong></p></div>
+<div>
+<p><strong>3. Бір санның екінші саннан қанша % екені</strong></p>
+<div class="theory-formula">P% = A / B &times; 100</div>
+<p>Алгоритм: A/B &rarr; &times;100 &rarr; % қос</p>
+<p>Мысал: 30/120 &times; 100 = <strong>25%</strong></p>
+</div>`
         },
         {
             title: '📐 Геометрия негіздері',
