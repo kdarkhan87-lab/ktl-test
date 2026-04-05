@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>KTL Test - Reset</title></head>
+<body>
+<h2>Жаңарту орындалуда...</h2>
+<p id="status">Кэш тазалануда...</p>
+<script>
+(function() {
+    var status = document.getElementById('status');
+
+    // Step 1: Unregister all service workers
+    var p1 = navigator.serviceWorker ?
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+            return Promise.all(regs.map(function(r) { return r.unregister(); }));
+        }) : Promise.resolve();
+
+    // Step 2: Clear all caches
+    var p2 = window.caches ?
+        caches.keys().then(function(keys) {
+            return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+        }) : Promise.resolve();
+
+    Promise.all([p1, p2]).then(function() {
+        status.textContent = 'Дайын! Бағытталуда...';
+        // Step 3: Redirect to main page
+        window.location.replace('/ktl-test/');
+    }).catch(function() {
+        status.textContent = 'Бағытталуда...';
+        window.location.replace('/ktl-test/');
+    });
+})();
+</script>
+</body>
+</html>
