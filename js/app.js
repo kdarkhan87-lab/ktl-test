@@ -871,6 +871,7 @@ window.startTest = async function(testId) {
 
     currentTest = testInfo;
     currentQuestions = shuffleArray([...bank]).slice(0, count);
+    shuffleOptions(currentQuestions);
     userAnswers = new Array(count).fill(-1);
     timeLeft = testInfo.time * 60;
     testStartTime = Date.now();
@@ -1091,6 +1092,23 @@ function shuffleArray(arr) {
         [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     return arr;
+}
+
+// Перемешивание вариантов ответов, обновляя correct индекс
+function shuffleOptions(questions) {
+    questions.forEach(q => {
+        if (!q.a || q.a.length === 0) return;
+        const correctAnswer = q.a[q.correct];
+        const original = [...q.a];
+        const indices = q.a.map((_, i) => i);
+        for (let i = indices.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+        q.a = indices.map(i => original[i]);
+        q.correct = q.a.indexOf(correctAnswer);
+    });
+    return questions;
 }
 
 // ==================== ADMIN PANEL ====================
@@ -2308,6 +2326,7 @@ function startPractice(topic) {
         $('#lessonContent').innerHTML = '<p>Жаттығу сұрақтары жоқ</p>';
         return;
     }
+    shuffleOptions(questions);
     practiceState = { questions, current: 0, score: 0, answered: new Array(questions.length).fill(null) };
     renderPracticeQuestion();
 }
@@ -2474,6 +2493,7 @@ function startDiagnostic() {
 
     // Shuffle and take 30
     const shuffled = allQuestions.sort(() => Math.random() - 0.5).slice(0, 30);
+    shuffleOptions(shuffled);
     diagnosticState = {
         questions: shuffled,
         current: 0,
