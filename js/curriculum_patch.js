@@ -209,7 +209,9 @@
     var count = 0;
     Object.keys(MVP).forEach(function(id) {
       var mod = CURRICULUM.allModules.find(function(m) { return m.id === id; });
-      if (mod) { mod.topics = MVP[id]; count++; }
+      if (mod) { mod.topics = MVP[id];
+           mod.topics.forEach(function(tp) { if (!tp.title) tp.title = tp.name_kz; });
+           count++; }
     });
     console.log("KTL Patch: " + count + " modules updated");
   }
