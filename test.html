@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>KTL Test - Auto Tests</title></head>
+<body>
+<h1>KTL Test - Automated Test Results</h1>
+<pre id="results">Loading scripts...</pre>
+
+<script src="js/curriculum.js?v=7"></script>
+<script src="js/app.js?v=7"></script>
+<script>
+(function() {
+    var results = [];
+    var passed = 0;
+    var failed = 0;
+
+    function assert(name, condition, detail) {
+        if (condition) {
+            passed++;
+            results.push('PASS: ' + name);
+        } else {
+            failed++;
+            results.push('FAIL: ' + name + ' — ' + (detail || ''));
+        }
+    }
+
+    // ========== TEST 1: shuffleOptions exists ==========
+    assert('shuffleOptions is a function', typeof shuffleOptions === 'function');
+
+    // ========== TEST 2: shuffleOptions actually shuffles ==========
+    var dist = {0:0,1:0,2:0,3:0,4:0};
+    for (var r = 0; r < 500; r++) {
+        var q = {q:'test', a:['A','B','C','D','E'], correct: 0};
+        shuffleOptions([q]);
+        dist[q.correct]++;
+    }
+    var allPositionsUsed = dist[0] > 0 && dist[1] > 0 && dist[2] > 0 && dist[3] > 0 && dist[4] > 0;
+    assert('shuffleOptions uses all 5 positions', allPositionsUsed,
+        'distribution: ' + JSON.stringify(dist));
+
+    var maxSkew = Math.max.apply(null, Object.values(dist)) / 500;
+    assert('shuffleOptions distribution is roughly uniform (<35% any position)', maxSkew < 0.35,
+        'max=' + (maxSkew * 100).toFixed(1) + '%');
+
+    // ========== TEST 3: correct answer preserved after shuffle ==========
+    var preserveOk = true;
+    for (var t = 0; t < 100; t++) {
+        var tq = {q:'test', a:['X','CORRECT','Y','Z','W'], correct: 1};
+        shuffleOptions([tq]);
+        if (tq.a[tq.correct] !== 'CORRECT') { preserveOk = false; break; }
+    }
+    assert('shuffleOptions preserves correct answer mapping', preserveOk);
+
+    // ========== TEST 4: CURRICULUM loaded ==========
+    assert('CURRICULUM exists', typeof CURRICULUM === 'object');
+    assert('CURRICULUM.modules is array', Array.isArray(CURRICULUM.modules));
+    assert('CURRICULUM has modules', CURRICULUM.modules.length > 0,
+        'count=' + CURRICULUM.modules.length);
+
+    // ========== TEST 5: All modules have required fields ==========
+    var modFieldsOk = true;
+    var modErrors = [];
+    CURRICULUM.modules.forEach(function(m) {
+        if (!m.id) { modFieldsOk = false; modErrors.push(m.id + ' missing id'); }
+        if (!m.title) { modFieldsOk = false; modErrors.push(m.id + ' missing title'); }
+        if (!m.icon) { modFieldsOk = false; modErrors.push(m.id + ' missing icon'); }
+        if (!m.topics || m.topics.length === 0) { modFieldsOk = false; modErrors.push(m.id + ' missing topics'); }
+    });
+    assert('All modules have id/title/icon/topics', modFieldsOk, modErrors.join(', '));
+
+    // ========== TEST 6: Practice questions have correct structure ==========
+    var practiceOk = true;
+    var practiceErrors = [];
+    var totalPractice = 0;
+    CURRICULUM.modules.forEach(function(m) {
+        m.topics.forEach(function(topic) {
+            (topic.practice || []).forEach(function(q, i) {
+                totalPractice++;
+                if (!q.q) { practiceOk = false; practiceErrors.push(m.id + '/' + topic.id + ' q' + i + ' missing question'); }
+                if (!q.a || q.a.length < 2) { practiceOk = false; practiceErrors.push(m.id + '/' + topic.id + ' q' + i + ' missing answers'); }
+                if (q.correct === undefined || q.correct < 0 || q.correct >= (q.a || []).length) {
+                    practiceOk = false;
+                    practiceErrors.push(m.id + '/' + topic.id + ' q' + i + ' invalid correct=' + q.correct);
+                }
+            });
+        });
+    });
+    assert('All practice questions valid (total=' + totalPractice + ')', practiceOk,
+        practiceErrors.slice(0, 5).join(', '));
+
+    // ========== TEST 7: Quiz questions have correct structure ==========
+    var quizOk = true;
+    var quizErrors = [];
+    var totalQuiz = 0;
+    CURRICULUM.modules.forEach(function(m) {
+        m.topics.forEach(function(topic) {
+            (topic.quiz || []).forEach(function(q, i) {
+                totalQuiz++;
+                if (!q.q) { quizOk = false; quizErrors.push(m.id + '/' + topic.id + ' q' + i + ' missing question'); }
+                if (!q.a || q.a.length < 2) { quizOk = false; quizErrors.push(m.id + '/' + topic.id + ' q' + i + ' missing answers'); }
+                if (q.correct === undefined || q.correct < 0 || q.correct >= (q.a || []).length) {
+                    quizOk = false;
+                    quizErrors.push(m.id + '/' + topic.id + ' q' + i + ' invalid correct=' + q.correct);
+                }
+            });
+        });
+    });
+    assert('All quiz questions valid (total=' + totalQuiz + ')', quizOk,
+        quizErrors.slice(0, 5).join(', '));
+
+    // ========== TEST 8: No duplicate answers in questions ==========
+    var dupOk = true;
+    var dupErrors = [];
+    CURRICULUM.modules.forEach(function(m) {
+        m.topics.forEach(function(topic) {
+            var allQs = (topic.practice || []).concat(topic.quiz || []);
+            allQs.forEach(function(q, i) {
+                var set = {};
+                (q.a || []).forEach(function(a) {
+                    if (set[a]) { dupOk = false; dupErrors.push(m.id + '/' + topic.id + ': dup "' + a + '"'); }
+                    set[a] = true;
+                });
+            });
+        });
+    });
+    assert('No duplicate answers in questions', dupOk,
+        dupErrors.length + ' duplicates: ' + dupErrors.slice(0, 3).join(', '));
+
+    // ========== TEST 9: questionBank exists and has categories ==========
+    assert('questionBank exists', typeof questionBank === 'object');
+    var categories = Object.keys(questionBank || {});
+    assert('questionBank has categories', categories.length > 0, categories.join(', '));
+
+    var totalBankQs = 0;
+    categories.forEach(function(cat) { totalBankQs += questionBank[cat].length; });
+    assert('questionBank total questions > 50', totalBankQs > 50, 'total=' + totalBankQs);
+
+    // ========== TEST 10: shuffleArray exists ==========
+    assert('shuffleArray is a function', typeof shuffleArray === 'function');
+
+    // ========== TEST 11: UI text is in Kazakh ==========
+    var i18nExists = typeof i18n !== 'undefined';
+    assert('i18n object exists', i18nExists);
+
+    // ========== TEST 12: Key functions on window ==========
+    var windowFuncs = ['startTest', 'openModule', 'openLesson', 'startPractice',
+        'startQuiz', 'answerPractice', 'nextPractice', 'selectAnswer'];
+    var missingFuncs = windowFuncs.filter(function(f) { return typeof window[f] !== 'function'; });
+    assert('All key functions on window object', missingFuncs.length === 0,
+        'missing: ' + missingFuncs.join(', '));
+
+    // ========== SUMMARY ==========
+    var summary = '\n============================\n' +
+        'TOTAL: ' + (passed + failed) + ' | PASSED: ' + passed + ' | FAILED: ' + failed +
+        '\n============================\n';
+
+    var output = results.join('\n') + summary;
+    document.getElementById('results').textContent = output;
+    document.title = 'TESTS: ' + passed + ' passed, ' + failed + ' failed';
+})();
+</script>
+</body>
+</html>
