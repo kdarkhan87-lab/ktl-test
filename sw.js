@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ktl-test-v4';
+const CACHE_NAME = 'ktl-test-v5';
 const ASSETS = [
     '/ktl-test/',
     '/ktl-test/index.html',

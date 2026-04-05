@@ -1095,21 +1095,21 @@ function shuffleArray(arr) {
 }
 
 // Перемешивание вариантов ответов, обновляя correct индекс
-function shuffleOptions(questions) {
-    questions.forEach(q => {
+var shuffleOptions = function(questions) {
+    questions.forEach(function(q) {
         if (!q.a || q.a.length === 0) return;
-        const correctAnswer = q.a[q.correct];
-        const original = [...q.a];
-        const indices = q.a.map((_, i) => i);
-        for (let i = indices.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [indices[i], indices[j]] = [indices[j], indices[i]];
+        var correctAnswer = q.a[q.correct];
+        var original = q.a.slice();
+        var indices = original.map(function(_, i) { return i; });
+        for (var i = indices.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var tmp = indices[i]; indices[i] = indices[j]; indices[j] = tmp;
         }
-        q.a = indices.map(i => original[i]);
+        q.a = indices.map(function(idx) { return original[idx]; });
         q.correct = q.a.indexOf(correctAnswer);
     });
     return questions;
-}
+};
 
 // ==================== ADMIN PANEL ====================
 let adminAllUsers = [];
