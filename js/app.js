@@ -2190,7 +2190,7 @@ function renderLearnPage(grade) {
         const pct = totalTopics > 0 ? Math.round(completed / totalTopics * 100) : 0;
         return `
         <div class="module-card" onclick="openModule('${mod.id}')">
-            <div class="module-icon">${mod.icon}</div>
+            <div class="module-icon"><i class="${mod.icon}"></i></div>
             <h3>${mod.title}</h3>
             <p>${mod.subtitle}</p>
             <div class="module-card-progress">
@@ -2220,7 +2220,7 @@ function openModule(moduleId) {
     const completed = mod.topics.filter(t => progress[moduleId + '_' + t.id]?.completed).length;
     const pct = totalTopics > 0 ? Math.round(completed / totalTopics * 100) : 0;
 
-    $('#moduleTitle').textContent = mod.icon + ' ' + mod.title;
+    $('#moduleTitle').innerHTML = `<i class="${mod.icon}"></i> ${mod.title}`;
     $('#moduleProgressFill').style.width = pct + '%';
     $('#moduleProgressText').textContent = pct + '% аяқталды (' + completed + '/' + totalTopics + ')';
 
