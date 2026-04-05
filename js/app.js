@@ -2161,9 +2161,9 @@ function renderTheoryPage(type) {
 }
 
 // ==================== FEATURE 10: LEARNING PATH ENGINE ====================
-let currentModuleId = null;
-let currentTopicId = null;
-let practiceState = { questions: [], current: 0, score: 0 };
+var currentModuleId = null;
+var currentTopicId = null;
+var practiceState = { questions: [], current: 0, score: 0 };
 
 function renderLearnPage(grade) {
     const grid = $('#learnModulesGrid');
@@ -2454,7 +2454,7 @@ async function saveTopicProgress(moduleId, topicId, quizScore) {
 }
 
 // ==================== FEATURE 11: DIAGNOSTIC TEST ====================
-let diagnosticState = null;
+var diagnosticState = null;
 
 function startDiagnostic() {
     // Collect questions from all curriculum modules
@@ -2650,3 +2650,22 @@ async function loadTestsFromFirestore() {
         // Keep using hardcoded testsList as fallback
     }
 }
+
+// ==================== WINDOW EXPORTS (for onclick handlers) ====================
+// Learning engine
+window.openModule = openModule;
+window.openLesson = openLesson;
+window.startPractice = startPractice;
+window.startQuiz = startQuiz;
+window.answerPractice = answerPractice;
+window.nextPractice = nextPractice;
+window.prevPractice = prevPractice;
+window.showPracticeHint = showPracticeHint;
+window.finishPractice = finishPractice;
+window.renderLessonTab = renderLessonTab;
+window.renderLearnPage = renderLearnPage;
+// Diagnostic
+window.startDiagnostic = startDiagnostic;
+window.selectDiagnosticAnswer = selectDiagnosticAnswer;
+window.finishDiagnostic = finishDiagnostic;
+window.renderDiagnosticQuestion = renderDiagnosticQuestion;
