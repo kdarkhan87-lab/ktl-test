@@ -1014,6 +1014,7 @@ async function finishTest() {
         $('#userTests').textContent = testResults.length;
         const avg = testResults.reduce((s, r) => s + r.percent, 0) / testResults.length;
         $('#userAvg').textContent = Math.round(avg) + '%';
+        updateLeaderboardEntry();
     }
 
     // Store review data for Feature 1
@@ -1775,56 +1776,31 @@ function renderStatsPage() {
 // ==================== FEATURE 3: LEADERBOARD ====================
 let leaderboardData = [];
 
+function updateLeaderboardEntry() {
+    if (!currentUser || !currentUserData) return;
+    const xp = testResults.length * 10 + testResults.reduce((s, r) => s + Math.floor((r.percent || 0) / 10), 0);
+    const avg = testResults.length > 0
+        ? Math.round(testResults.reduce((s, r) => s + (r.percent || 0), 0) / testResults.length)
+        : 0;
+    const level = getLevel(xp);
+    db.collection('leaderboard').doc(currentUser.uid).set({
+        name: currentUserData.name || currentUser.email?.split('@')[0] || 'Белгісіз',
+        tests: testResults.length,
+        avg,
+        xp,
+        level: level.name,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(e => console.error('Leaderboard update error:', e));
+}
+
 async function loadLeaderboard(period = 'all') {
     const tbody = $('#leaderboardBody');
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">Жүктелуде...</td></tr>';
 
     try {
-        const usersSnap = await db.collection('users').get();
-        const board = [];
-
-        for (const userDoc of usersSnap.docs) {
-            const u = userDoc.data();
-            if (u.role === 'admin' || u.role === 'super-admin') continue;
-
-            const resultsSnap = await db.collection('users').doc(userDoc.id)
-                .collection('results').get();
-
-            let results = resultsSnap.docs.map(d => d.data());
-
-            // Period filter
-            if (period === 'month' || period === 'week') {
-                const now = new Date();
-                const cutoff = new Date();
-                if (period === 'month') cutoff.setMonth(now.getMonth() - 1);
-                else cutoff.setDate(now.getDate() - 7);
-
-                results = results.filter(r => {
-                    if (r.createdAt && r.createdAt.toDate) {
-                        return r.createdAt.toDate() >= cutoff;
-                    }
-                    return true;
-                });
-            }
-
-            if (results.length === 0) continue;
-
-            const avg = Math.round(results.reduce((s, r) => s + (r.percent || 0), 0) / results.length);
-            const xp = results.length * 10 + results.reduce((s, r) => s + Math.floor((r.percent || 0) / 10), 0);
-            const level = getLevel(xp);
-
-            board.push({
-                uid: userDoc.id,
-                name: u.name || u.email?.split('@')[0] || 'Белгісіз',
-                tests: results.length,
-                avg,
-                xp,
-                level: level.name
-            });
-        }
-
-        board.sort((a, b) => b.xp - a.xp);
+        const snap = await db.collection('leaderboard').orderBy('xp', 'desc').limit(50).get();
+        const board = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
         leaderboardData = board;
         renderLeaderboard(board);
     } catch (e) {
