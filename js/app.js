@@ -2408,8 +2408,10 @@ function renderPracticeQuestion() {
             </div>
             ${isAnswered ? `
                 <div class="practice-feedback ${answered[current] === q.correct ? 'correct' : 'wrong'}">
-                    ${answered[current] === q.correct ? '✅ Дұрыс!' : '❌ Қате. Дұрыс жауап: ' + q.a[q.correct]}
-                    ${q.hint && answered[current] !== q.correct ? '<br><em>💡 ' + q.hint + '</em>' : ''}
+                    ${answered[current] === q.correct
+                        ? '✅ Дұрыс!'
+                        : `❌ Дұрыс жауабы: <strong>${q.a[q.correct]}</strong>${q.hint ? '<br><span style="font-size:13px;opacity:0.9">🔢 Шешімі: ' + q.hint + '</span>' : ''}`
+                    }
                 </div>
                 <div class="practice-nav">
                     ${current > 0 ? '<button class="btn btn-outline btn-sm" onclick="prevPractice()"><i class="fas fa-arrow-left"></i> Алдыңғы</button>' : ''}
@@ -2528,18 +2530,48 @@ async function saveTopicProgress(moduleId, topicId, quizScore) {
 // ==================== FEATURE 11: DIAGNOSTIC TEST ====================
 var diagnosticState = null;
 
+function startQuickDiagnostic() {
+    // Collect 1 question per module (up to 5 modules)
+    const allQuestions = [];
+    CURRICULUM.modules.forEach(mod => {
+        mod.topics.forEach(topic => {
+            const practice = topic.practice || [];
+            if (practice.length > 0) {
+                const q = practice[Math.floor(Math.random() * practice.length)];
+                allQuestions.push({ ...q, moduleId: mod.id, topicId: topic.id, topicTitle: topic.name_kz, moduleName: mod.name_kz });
+            }
+        });
+    });
+
+    // Shuffle and take exactly 5
+    const shuffled = allQuestions.sort(() => Math.random() - 0.5).slice(0, 5);
+    shuffleOptions(shuffled);
+
+    diagnosticState = {
+        questions: shuffled,
+        current: 0,
+        answers: new Array(shuffled.length).fill(null),
+        startTime: Date.now(),
+        isQuick: true
+    };
+
+    $('#diagnosticIntro').style.display = 'none';
+    $('#diagnosticResult').style.display = 'none';
+    renderDiagnosticQuestion();
+}
+
 function startDiagnostic() {
     // Collect questions from all curriculum modules
     const allQuestions = [];
-    CURRICULUM.grade5.forEach(mod => {
+    CURRICULUM.modules.forEach(mod => {
         mod.topics.forEach(topic => {
             (topic.quiz || []).forEach(q => {
-                allQuestions.push({ ...q, moduleId: mod.id, topicId: topic.id, topicTitle: topic.title });
+                allQuestions.push({ ...q, moduleId: mod.id, topicId: topic.id, topicTitle: topic.name_kz });
             });
             // Also take some practice questions
             const practice = (topic.practice || []).slice(0, 2);
             practice.forEach(q => {
-                allQuestions.push({ ...q, moduleId: mod.id, topicId: topic.id, topicTitle: topic.title });
+                allQuestions.push({ ...q, moduleId: mod.id, topicId: topic.id, topicTitle: topic.name_kz });
             });
         });
     });
@@ -2567,7 +2599,8 @@ function renderDiagnosticQuestion() {
     }
     const q = questions[current];
     const elapsed = Math.floor((Date.now() - diagnosticState.startTime) / 1000);
-    const remaining = Math.max(0, 45 * 60 - elapsed);
+    const timeLimitSec = diagnosticState.isQuick ? 3 * 60 : 45 * 60;
+    const remaining = Math.max(0, timeLimitSec - elapsed);
     const mins = Math.floor(remaining / 60);
     const secs = remaining % 60;
 
@@ -2639,39 +2672,79 @@ function finishDiagnostic() {
     const sorted = Object.entries(topicResults).sort((a, b) => (a[1].correct / a[1].total) - (b[1].correct / b[1].total));
 
     $('#diagnosticResult').style.display = 'block';
-    $('#diagnosticOverall').innerHTML = `
-        <div style="font-size:48px;margin:10px 0">${levelIcon}</div>
-        <h3>Сіздің деңгейіңіз: ${level}</h3>
-        <p style="font-size:24px;font-weight:bold;color:#2ecc71">${totalCorrect}/${questions.length} (${totalPct}%)</p>`;
 
-    $('#diagnosticTopics').innerHTML = `
-        <h4 style="margin:15px 0 10px">Тақырыптар бойынша:</h4>
-        ${sorted.map(([name, data]) => {
+    if (diagnosticState.isQuick) {
+        // Quick diagnostic result — find weakest topic and offer direct start
+        const weakTopics = sorted.filter(([, d]) => d.correct / d.total < 1);
+        const weakest = weakTopics[0];
+        const weakestData = weakest ? topicResults[weakest[0]] : null;
+
+        $('#diagnosticOverall').innerHTML = `
+            <div style="font-size:48px;margin:10px 0">⚡</div>
+            <h3>Жылдам диагностика нәтижесі</h3>
+            <p style="font-size:24px;font-weight:bold;color:#2ecc71">${totalCorrect}/${questions.length} дұрыс</p>`;
+
+        const weakRows = sorted.map(([name, data]) => {
             const pct = Math.round(data.correct / data.total * 100);
             const color = pct >= 70 ? '#2ecc71' : pct >= 40 ? '#f39c12' : '#e74c3c';
+            const btnHtml = pct < 100 ? `<button class="btn btn-outline btn-sm" onclick="openModule('${data.moduleId}')" style="font-size:12px;padding:4px 10px">Оқу</button>` : '';
             return `<div class="diagnostic-topic-row" style="display:flex;align-items:center;gap:10px;margin:8px 0">
-                <span style="flex:1">${name}</span>
-                <div style="width:120px;height:8px;background:rgba(255,255,255,0.1);border-radius:4px">
-                    <div style="width:${pct}%;height:100%;background:${color};border-radius:4px"></div>
-                </div>
-                <span style="color:${color};font-size:13px;width:40px;text-align:right">${pct}%</span>
+                <span style="flex:1;font-size:14px">${name}</span>
+                <span style="color:${color};font-size:13px">${data.correct}/${data.total}</span>
+                ${btnHtml}
             </div>`;
-        }).join('')}
-        <div style="margin-top:20px;padding:15px;background:rgba(231,76,60,0.1);border-radius:10px">
-            <h4 style="color:#e74c3c;margin-bottom:8px">⚡ Күшейту керек тақырыптар:</h4>
-            ${sorted.filter(([, d]) => d.correct / d.total < 0.6).map(([name]) => `<p>• ${name}</p>`).join('') || '<p>Барлық тақырыптар жақсы!</p>'}
-        </div>`;
+        }).join('');
 
-    // Save diagnostic result
-    if (currentUser) {
-        db.collection('users').doc(currentUser.uid).update({
-            diagnosticResult: {
-                score: totalPct,
-                level,
-                topicResults: Object.fromEntries(sorted.map(([name, d]) => [name, Math.round(d.correct / d.total * 100)])),
-                date: new Date().toISOString()
-            }
-        }).catch(e => console.error('Error saving diagnostic:', e));
+        const startWeakBtn = weakestData ? `
+            <div style="margin-top:20px;padding:15px;background:rgba(231,76,60,0.1);border-radius:10px">
+                <p style="color:#e74c3c;margin-bottom:10px">⚡ Ең әлсіз тақырып: <strong>${weakest[0]}</strong></p>
+                <button class="btn btn-primary" onclick="openModule('${weakestData.moduleId}')" style="background:#e74c3c;border-color:#e74c3c">
+                    📚 Осы тақырыпты бастау
+                </button>
+            </div>` : `<p style="color:#2ecc71;margin-top:15px">🎉 Барлық сұрақтар дұрыс!</p>`;
+
+        $('#diagnosticTopics').innerHTML = `
+            <h4 style="margin:15px 0 10px">Нәтижелер:</h4>
+            ${weakRows}
+            ${startWeakBtn}
+            <button class="btn btn-outline" onclick="showPage('diagnostic')" style="margin-top:15px;width:100%">
+                🔄 Қайта тапсыру
+            </button>`;
+    } else {
+        $('#diagnosticOverall').innerHTML = `
+            <div style="font-size:48px;margin:10px 0">${levelIcon}</div>
+            <h3>Сіздің деңгейіңіз: ${level}</h3>
+            <p style="font-size:24px;font-weight:bold;color:#2ecc71">${totalCorrect}/${questions.length} (${totalPct}%)</p>`;
+
+        $('#diagnosticTopics').innerHTML = `
+            <h4 style="margin:15px 0 10px">Тақырыптар бойынша:</h4>
+            ${sorted.map(([name, data]) => {
+                const pct = Math.round(data.correct / data.total * 100);
+                const color = pct >= 70 ? '#2ecc71' : pct >= 40 ? '#f39c12' : '#e74c3c';
+                return `<div class="diagnostic-topic-row" style="display:flex;align-items:center;gap:10px;margin:8px 0">
+                    <span style="flex:1">${name}</span>
+                    <div style="width:120px;height:8px;background:rgba(255,255,255,0.1);border-radius:4px">
+                        <div style="width:${pct}%;height:100%;background:${color};border-radius:4px"></div>
+                    </div>
+                    <span style="color:${color};font-size:13px;width:40px;text-align:right">${pct}%</span>
+                </div>`;
+            }).join('')}
+            <div style="margin-top:20px;padding:15px;background:rgba(231,76,60,0.1);border-radius:10px">
+                <h4 style="color:#e74c3c;margin-bottom:8px">⚡ Күшейту керек тақырыптар:</h4>
+                ${sorted.filter(([, d]) => d.correct / d.total < 0.6).map(([name]) => `<p>• ${name}</p>`).join('') || '<p>Барлық тақырыптар жақсы!</p>'}
+            </div>`;
+
+        // Save full diagnostic result to Firebase
+        if (currentUser) {
+            db.collection('users').doc(currentUser.uid).update({
+                diagnosticResult: {
+                    score: totalPct,
+                    level,
+                    topicResults: Object.fromEntries(sorted.map(([name, d]) => [name, Math.round(d.correct / d.total * 100)])),
+                    date: new Date().toISOString()
+                }
+            }).catch(e => console.error('Error saving diagnostic:', e));
+        }
     }
 }
 

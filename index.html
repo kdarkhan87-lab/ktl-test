@@ -767,15 +767,33 @@
             <div class="diagnostic-intro" id="diagnosticIntro">
                 <div class="diagnostic-icon">🎯</div>
                 <h2>Диагностикалық тест</h2>
-                <p>Бұл тест сіздің деңгейіңізді анықтайды және жеке оқу жоспарын құрады.</p>
-                <ul>
-                    <li>📝 30 сұрақ (барлық тақырыптар бойынша)</li>
-                    <li>⏱ 45 минут</li>
-                    <li>📊 Нәтиже: деңгей + жеке жоспар</li>
-                </ul>
-                <button class="btn btn-primary" id="startDiagnosticBtn" style="margin-top:15px; font-size:16px; padding:14px 30px;">
-                    🚀 Тестті бастау
-                </button>
+                <p>Деңгейіңізді анықтап, әлсіз тақырыптарды табыңыз.</p>
+                <div style="display:flex;gap:15px;flex-wrap:wrap;justify-content:center;margin-top:20px">
+                    <div style="background:rgba(46,204,113,0.1);border:2px solid #2ecc71;border-radius:12px;padding:20px;flex:1;min-width:200px;max-width:280px">
+                        <div style="font-size:32px;margin-bottom:8px">⚡</div>
+                        <h3 style="color:#2ecc71;margin:0 0 8px">Жылдам диагностика</h3>
+                        <ul style="text-align:left;margin:8px 0;padding-left:18px;font-size:14px">
+                            <li>5 сұрақ</li>
+                            <li>2–3 минут</li>
+                            <li>Нәтиже: әлсіз тақырып</li>
+                        </ul>
+                        <button class="btn btn-primary" onclick="startQuickDiagnostic()" style="width:100%;margin-top:10px;background:#2ecc71;border-color:#2ecc71">
+                            ⚡ Бастау
+                        </button>
+                    </div>
+                    <div style="background:rgba(52,152,219,0.1);border:2px solid #3498db;border-radius:12px;padding:20px;flex:1;min-width:200px;max-width:280px">
+                        <div style="font-size:32px;margin-bottom:8px">🚀</div>
+                        <h3 style="color:#3498db;margin:0 0 8px">Толық диагностика</h3>
+                        <ul style="text-align:left;margin:8px 0;padding-left:18px;font-size:14px">
+                            <li>30 сұрақ</li>
+                            <li>45 минут</li>
+                            <li>Нәтиже: жеке жоспар</li>
+                        </ul>
+                        <button class="btn btn-primary" id="startDiagnosticBtn" style="width:100%;margin-top:10px">
+                            🚀 Бастау
+                        </button>
+                    </div>
+                </div>
             </div>
             <div class="diagnostic-result" id="diagnosticResult" style="display:none;">
                 <h2>📊 Диагностика нәтижесі</h2>
@@ -1048,7 +1066,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-    <script src="js/curriculum.js?v=8"></script>
-    <script src="js/app.js?v=8"></script>
+    <script src="js/curriculum.js?v=9"></script>
+    <script src="js/app.js?v=9"></script>
 </body>
 </html>
